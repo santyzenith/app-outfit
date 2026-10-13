@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { FlatList, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/app/screen-header';
-import { Spinner } from '@/components/app/spinner';
+import { Pulse } from '@/components/app/pulse';
 import { Text } from '@/components/ui/text';
 import { type Garment, useGarmentImage } from '@/lib/garments';
 import { OCCASIONS, type Outfit, useOutfitHistory } from '@/lib/outfits';
@@ -54,9 +54,11 @@ export default function HistoryScreen() {
       <ScreenHeader title="Historial" eyebrow="Lo que te has puesto" />
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <Spinner />
-        </View>
+        <Pulse style={{ gap: 12, paddingHorizontal: 16, paddingTop: 4 }}>
+          {[0, 1, 2].map((entry) => (
+            <View key={entry} className="h-36 rounded-2xl bg-muted" />
+          ))}
+        </Pulse>
       ) : (
         <FlatList
           data={outfits}

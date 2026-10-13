@@ -6,7 +6,7 @@ import { FlatList, ScrollView, View } from 'react-native';
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { GarmentTile } from '@/components/app/garment-tile';
 import { ScreenHeader } from '@/components/app/screen-header';
-import { Spinner } from '@/components/app/spinner';
+import { Pulse } from '@/components/app/pulse';
 import { UploadBanner } from '@/components/app/upload-banner';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -56,9 +56,15 @@ export default function ClosetScreen() {
       )}
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <Spinner />
-        </View>
+        <Pulse style={{ gap: 8, paddingHorizontal: 16, paddingTop: 4 }}>
+          {[0, 1, 2].map((row) => (
+            <View key={row} className="flex-row gap-2">
+              {[0, 1, 2].map((tile) => (
+                <View key={tile} className="aspect-square flex-1 rounded-xl bg-muted" />
+              ))}
+            </View>
+          ))}
+        </Pulse>
       ) : (
         <FlatList
           data={visible}
@@ -81,7 +87,9 @@ export default function ClosetScreen() {
               <Text className="text-center text-muted-foreground">
                 {isError
                   ? 'Desliza hacia abajo para intentarlo de nuevo.'
-                  : 'Añade prendas con el botón de abajo.'}
+                  : garments.length > 0
+                    ? 'Añade prendas con el botón de abajo.'
+                    : 'Fotografía tu ropa y la ordenamos por ti. Con una parte de arriba, una de abajo y unos zapatos ya tienes tu primer outfit.'}
               </Text>
             </View>
           }

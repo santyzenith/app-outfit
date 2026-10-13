@@ -68,6 +68,8 @@ class Garment(Base):
     # The user's photo is kept so the catalog image can be regenerated later.
     original_path: Mapped[str] = mapped_column(String(255))
     image_path: Mapped[str | None] = mapped_column(String(255))
+    # Which item this garment is when its photo shows several; empty for a photo of one item.
+    focus: Mapped[str | None] = mapped_column(String(200))
 
     last_worn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

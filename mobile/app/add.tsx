@@ -5,6 +5,12 @@ import { router } from 'expo-router';
 import { ImagesIcon, XIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { Linking, Pressable, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
@@ -24,6 +30,8 @@ export default function AddGarmentsScreen() {
   const [added, setAdded] = React.useState(0);
   const [lastPhoto, setLastPhoto] = React.useState<string | null>(null);
   const [shooting, setShooting] = React.useState(false);
+  const flash = useSharedValue(0);
+  const flashStyle = useAnimatedStyle(() => ({ opacity: flash.value }));
 
   function addPhotos(uris: string[]): void {
     setAdded((count) => count + uris.length);
@@ -35,6 +43,8 @@ export default function AddGarmentsScreen() {
   async function takePhoto(): Promise<void> {
     if (shooting) return;
     setShooting(true);
+    // A quick white blink confirms the shot without any sound.
+    flash.value = withSequence(withTiming(0.7, { duration: 50 }), withTiming(0, { duration: 220 }));
     try {
       const photo = await camera.current?.takePictureAsync({ quality: 0.8 });
       if (photo) addPhotos([photo.uri]);
@@ -63,7 +73,7 @@ export default function AddGarmentsScreen() {
         </Pressable>
         <Text className="font-sans-semibold text-white">
           {added === 0
-            ? 'Una prenda por foto'
+            ? 'Fotografía tu ropa'
             : `${added} ${added === 1 ? 'foto añadida' : 'fotos añadidas'}`}
         </Text>
         <View className="h-10 w-10 overflow-hidden rounded-md">
@@ -75,7 +85,19 @@ export default function AddGarmentsScreen() {
 
       <View className="flex-1 overflow-hidden rounded-2xl">
         {permission?.granted ? (
-          <CameraView ref={camera} facing="back" style={{ flex: 1 }} />
+          <>
+            <CameraView ref={camera} facing="back" style={{ flex: 1 }} />
+            <View pointerEvents="none" className="absolute inset-x-0 bottom-4 items-center px-6">
+              <Text className="rounded-full bg-black/60 px-4 py-2 text-center text-sm text-white">
+                Extiende la ropa sobre un fondo liso. Si pones varias prendas, que no se tapen.
+              </Text>
+            </View>
+            <Animated.View
+              pointerEvents="none"
+              style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }, flashStyle]}>
+              <View className="flex-1 bg-white" />
+            </Animated.View>
+          </>
         ) : (
           <View className="flex-1 items-center justify-center gap-4 px-8">
             <Text className="text-center text-white">

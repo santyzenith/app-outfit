@@ -22,17 +22,29 @@ def image_bytes(size=(800, 600), color="navy", fmt="JPEG") -> bytes:
 
 
 ANALYSIS = GarmentAnalysis(
-    is_garment=True,
     category=GarmentCategory.TOP,
     name="Camiseta azul",
     color="azul marino",
     warmth=Warmth.LIGHT,
     formality=Formality.CASUAL,
+    description="the navy t-shirt",
+)
+JEAN = GarmentAnalysis(
+    category=GarmentCategory.BOTTOM,
+    name="Jean negro",
+    color="negro",
+    warmth=Warmth.MEDIUM,
+    formality=Formality.CASUAL,
+    description="the black jeans on the right",
 )
 
 
-def failing_model(photo: bytes) -> bytes:
+def failing_model(photo: bytes, focus: str | None = None) -> bytes:
     raise AIError("model is down")
+
+
+def working_model(photo: bytes, focus: str | None = None) -> bytes:
+    return image_bytes(fmt="PNG")
 
 
 @pytest.fixture
@@ -40,11 +52,11 @@ def fake_ai(monkeypatch):
     # Replaces the two paid model calls and counts how often each one runs.
     calls = {"analyze": 0, "recreate": 0}
 
-    def analyze(photo: bytes) -> GarmentAnalysis:
+    def analyze(photo: bytes) -> list[GarmentAnalysis]:
         calls["analyze"] += 1
-        return ANALYSIS
+        return [ANALYSIS]
 
-    def recreate(photo: bytes) -> bytes:
+    def recreate(photo: bytes, focus: str | None = None) -> bytes:
         calls["recreate"] += 1
         return image_bytes(size=(2048, 2048), color="white", fmt="PNG")
 
@@ -131,8 +143,7 @@ def test_catalog_image_is_missing_until_processing_finishes(client, user):
 def test_photo_without_a_garment_fails_without_generating_an_image(
     client, db, user, fake_ai, monkeypatch
 ):
-    not_a_garment = GarmentAnalysis(**{**ANALYSIS.__dict__, "is_garment": False})
-    monkeypatch.setattr(processing, "analizar_prenda", lambda photo: not_a_garment)
+    monkeypatch.setattr(processing, "analizar_prenda", lambda photo: [])
     garment = upload(client, user).json()
 
     jobs.run_next_job(db)
@@ -143,8 +154,71 @@ def test_photo_without_a_garment_fails_without_generating_an_image(
     assert fake_ai["recreate"] == 0
 
 
+def test_a_photo_with_several_items_becomes_several_garments(
+    client, db, user, fake_ai, monkeypatch
+):
+    asked_for = []
+
+    def recreate(photo: bytes, focus: str | None = None) -> bytes:
+        asked_for.append(focus)
+        return image_bytes(fmt="PNG")
+
+    monkeypatch.setattr(processing, "analizar_prenda", lambda photo: [ANALYSIS, JEAN])
+    monkeypatch.setattr(processing, "recrear_prenda", recreate)
+    upload(client, user)
+
+    jobs.run_next_job(db)
+    listed = client.get("/v1/garments", headers=user).json()
+    assert {g["name"]: g["status"] for g in listed} == {
+        "Camiseta azul": "ready",
+        "Jean negro": "processing",
+    }
+
+    run_all_jobs(db)
+
+    garments = client.get("/v1/garments", headers=user).json()
+    assert {g["status"] for g in garments} == {"ready"}
+    assert asked_for == [ANALYSIS.description, JEAN.description]
+    for garment in garments:
+        url = f"/v1/garments/{garment['id']}/image?variant=original"
+        assert client.get(url, headers=user).status_code == 200
+
+
+def test_a_photo_cannot_become_more_garments_than_the_limit(client, db, user, fake_ai, monkeypatch):
+    many = [ANALYSIS] * (processing.MAX_ITEMS_PER_PHOTO + 3)
+    monkeypatch.setattr(processing, "analizar_prenda", lambda photo: many)
+    upload(client, user)
+
+    run_all_jobs(db)
+
+    garments = client.get("/v1/garments", headers=user).json()
+    assert len(garments) == processing.MAX_ITEMS_PER_PHOTO
+    assert fake_ai["recreate"] == processing.MAX_ITEMS_PER_PHOTO
+
+
+def test_retrying_a_garment_from_a_shared_photo_does_not_split_it_again(
+    client, db, user, fake_ai, monkeypatch
+):
+    monkeypatch.setattr(processing, "analizar_prenda", lambda photo: [ANALYSIS, JEAN])
+    upload(client, user)
+    jobs.run_next_job(db)
+    monkeypatch.setattr(processing, "recrear_prenda", failing_model)
+    run_all_jobs(db)
+    failed = next(
+        g for g in client.get("/v1/garments", headers=user).json() if g["status"] == "failed"
+    )
+    monkeypatch.setattr(processing, "recrear_prenda", working_model)
+
+    client.post(f"/v1/garments/{failed['id']}/retry", headers=user)
+    run_all_jobs(db)
+
+    garments = client.get("/v1/garments", headers=user).json()
+    assert sorted(g["name"] for g in garments) == ["Camiseta azul", "Jean negro"]
+    assert {g["status"] for g in garments} == {"ready"}
+
+
 def test_processing_retries_and_then_gives_up(client, db, user, fake_ai, monkeypatch):
-    def broken(photo: bytes) -> bytes:
+    def broken(photo: bytes, focus: str | None = None) -> bytes:
         fake_ai["recreate"] += 1
         raise AIError("model is down")
 
@@ -164,7 +238,7 @@ def test_a_failed_garment_can_be_retried(client, db, user, fake_ai, monkeypatch)
     monkeypatch.setattr(processing, "recrear_prenda", failing_model)
     garment = upload(client, user).json()
     run_all_jobs(db)
-    monkeypatch.setattr(processing, "recrear_prenda", lambda photo: image_bytes(fmt="PNG"))
+    monkeypatch.setattr(processing, "recrear_prenda", working_model)
 
     retried = client.post(f"/v1/garments/{garment['id']}/retry", headers=user)
     run_all_jobs(db)
@@ -282,7 +356,7 @@ def test_regenerating_replaces_the_catalog_image_file(client, db, user, fake_ai,
     monkeypatch.setattr(processing, "recrear_prenda", failing_model)
     garment = upload(client, user).json()
     run_all_jobs(db)
-    monkeypatch.setattr(processing, "recrear_prenda", lambda photo: image_bytes(fmt="PNG"))
+    monkeypatch.setattr(processing, "recrear_prenda", working_model)
     client.post(f"/v1/garments/{garment['id']}/retry", headers=user)
     run_all_jobs(db)
 

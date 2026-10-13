@@ -5,6 +5,8 @@ import { View } from 'react-native';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { OutfitCollage } from '@/components/app/outfit-collage';
+import { OutfitTransition } from '@/components/app/outfit-transition';
+import { Pulse } from '@/components/app/pulse';
 import { ScreenHeader } from '@/components/app/screen-header';
 import { Spinner } from '@/components/app/spinner';
 import { Button } from '@/components/ui/button';
@@ -107,11 +109,13 @@ export default function TodayScreen() {
 
         {outfit ? (
           <>
-            <OutfitCollage outfit={outfit} />
+            <OutfitTransition outfitId={outfit.id} dimmed={another.isPending}>
+              <OutfitCollage outfit={outfit} />
 
-            <Text className="text-center font-serif-italic text-lg leading-6">
-              {outfit.explanation}
-            </Text>
+              <Text className="text-center font-serif-italic text-lg leading-6">
+                {outfit.explanation}
+              </Text>
+            </OutfitTransition>
             {noMoreOutfits && (
               <Text className="text-center text-sm text-muted-foreground">
                 No hay más combinaciones por hoy con tu armario.
@@ -128,9 +132,13 @@ export default function TodayScreen() {
                 <Button
                   variant="outline"
                   size="lg"
-                  disabled={busy}
+                  disabled={busy || noMoreOutfits}
                   onPress={() => another.mutate(outfit)}>
-                  <Icon as={RefreshCwIcon} size={16} />
+                  {another.isPending ? (
+                    <Spinner size="small" />
+                  ) : (
+                    <Icon as={RefreshCwIcon} size={16} />
+                  )}
                   <Text className="font-sans-semibold">Otra</Text>
                 </Button>
                 <Button
@@ -154,10 +162,13 @@ export default function TodayScreen() {
             </Button>
           </Message>
         ) : (
-          <View className="flex-1 items-center justify-center gap-3">
-            <Spinner />
-            <Text className="text-muted-foreground">Armando tu outfit…</Text>
-          </View>
+          <Pulse style={{ flex: 1, gap: 16 }}>
+            <View className="flex-1 rounded-3xl bg-muted" />
+            <Text className="text-center font-serif-italic text-lg leading-6 text-muted-foreground">
+              Armando tu outfit…
+            </Text>
+            <View className="h-12 rounded-md bg-muted" />
+          </Pulse>
         )}
       </View>
     </View>

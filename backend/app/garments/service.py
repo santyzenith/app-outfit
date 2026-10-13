@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import jobs
+from app.ai.garments import GarmentAnalysis
 from app.garments.images import normalize_photo
 from app.models import Garment, GarmentStatus, User
 from app.storage import Storage
@@ -32,6 +33,32 @@ def create_from_photo(db: Session, storage: Storage, user: User, photo: bytes) -
     _enqueue_processing(db, garment)
     db.commit()
     return garment
+
+
+def create_from_shared_photo(
+    db: Session, storage: Storage, source: Garment, item: GarmentAnalysis
+) -> Garment:
+    # Each garment owns a copy of the photo, so deleting one never breaks the others.
+    garment_id = uuid.uuid4()
+    photo = storage.read(source.original_path)
+    garment = Garment(
+        id=garment_id,
+        user_id=source.user_id,
+        original_path=storage.save(source.user_id, f"{garment_id}_original.jpg", photo),
+    )
+    describe(garment, item)
+    garment.focus = item.description
+    db.add(garment)
+    _enqueue_processing(db, garment)
+    return garment
+
+
+def describe(garment: Garment, item: GarmentAnalysis) -> None:
+    garment.category = item.category
+    garment.name = item.name
+    garment.color = item.color
+    garment.warmth = item.warmth
+    garment.formality = item.formality
 
 
 def list_for_user(db: Session, user: User, status: GarmentStatus | None = None) -> list[Garment]:
