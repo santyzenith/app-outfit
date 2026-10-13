@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas import ForecastOut, GarmentOut, OutfitOut
 from app.auth.deps import CurrentUser, DbSession
+from app.garments import service as garment_service
 from app.models import Garment, Occasion, Outfit
 from app.outfits import service
 from app.outfits.weather import Forecast, get_forecast
@@ -15,6 +16,8 @@ router = APIRouter(prefix="/outfits", tags=["outfits"])
 
 Latitude = Annotated[float | None, Query(ge=-90, le=90)]
 Longitude = Annotated[float | None, Query(ge=-180, le=180)]
+# Minutes east of UTC, as the phone reports it (Ecuador is -300).
+UtcOffsetMinutes = Annotated[int | None, Query(ge=-720, le=840)]
 
 
 def _forecast(day: dt.date, lat: float | None, lon: float | None) -> Forecast | None:
@@ -39,6 +42,13 @@ def _outfit_out(db: Session, outfit: Outfit, forecast: Forecast | None) -> Outfi
     )
 
 
+def _not_enough_garments(error: service.NotEnoughGarmentsError) -> HTTPException:
+    missing = [category.value for category in error.missing]
+    return HTTPException(
+        status.HTTP_409_CONFLICT, {"code": "not_enough_garments", "missing": missing}
+    )
+
+
 def _owned_outfit(outfit_id: uuid.UUID, user: CurrentUser, db: DbSession) -> Outfit:
     try:
         return service.get_for_user(db, user, outfit_id)
@@ -57,15 +67,37 @@ def read_today(
     db: DbSession,
     lat: Latitude = None,
     lon: Longitude = None,
+    tz: UtcOffsetMinutes = None,
 ) -> OutfitOut:
+    service.remember_context(db, user, lat, lon, tz)
     forecast = _forecast(day, lat, lon)
     try:
         outfit = service.get_today(db, user, day, occasion, forecast)
     except service.NotEnoughGarmentsError as exc:
-        missing = [category.value for category in exc.missing]
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, {"code": "not_enough_garments", "missing": missing}
-        ) from exc
+        raise _not_enough_garments(exc) from exc
+    return _outfit_out(db, outfit, forecast)
+
+
+@router.post("/around/{garment_id}")
+def build_around_garment(
+    garment_id: uuid.UUID,
+    day: dt.date,
+    occasion: Occasion,
+    user: CurrentUser,
+    db: DbSession,
+    lat: Latitude = None,
+    lon: Longitude = None,
+) -> OutfitOut:
+    forecast = _forecast(day, lat, lon)
+    try:
+        garment = garment_service.get_for_user(db, user, garment_id)
+        outfit = service.build_around(db, user, garment, day, occasion, forecast)
+    except garment_service.GarmentNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "garment_not_found") from exc
+    except service.GarmentNotReadyError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, {"code": "garment_not_ready"}) from exc
+    except service.NotEnoughGarmentsError as exc:
+        raise _not_enough_garments(exc) from exc
     return _outfit_out(db, outfit, forecast)
 
 

@@ -307,3 +307,39 @@ def test_history_lists_only_the_outfits_that_were_worn(client, user, closet, sty
     assert [outfit["id"] for outfit in history] == [worn["id"]]
     assert history[0]["worn"] is True
     assert client.get("/v1/outfits/history", headers=stranger).json() == []
+
+
+def around(client, headers, garment_id, occasion="casual"):
+    query = {"day": TODAY.isoformat(), "occasion": occasion}
+    return client.post(f"/v1/outfits/around/{garment_id}", params=query, headers=headers)
+
+
+def test_an_outfit_can_be_built_around_a_chosen_garment(client, user, closet, stylist):
+    shown = today(client, user).json()
+    other_top = next(g for g in closet[:2] if str(g.id) != shown["garments"]["top"]["id"])
+
+    built = around(client, user, other_top.id)
+
+    assert built.status_code == 200
+    assert built.json()["garments"]["top"]["id"] == str(other_top.id)
+    # The requested outfit replaces what was on the Today screen.
+    assert today(client, user).json()["id"] == built.json()["id"]
+
+
+def test_building_around_a_garment_works_when_the_model_is_down(client, user, closet, monkeypatch):
+    def broken(*args):
+        raise AIError("model is down")
+
+    monkeypatch.setattr(service, "sugerir_outfits", broken)
+    bottom = closet[3]
+
+    built = around(client, user, bottom.id).json()
+
+    assert built["garments"]["bottom"]["id"] == str(bottom.id)
+    assert built["garments"]["shoes"] is not None
+
+
+def test_building_around_someone_elses_garment_is_not_found(client, user, closet, stylist):
+    stranger = auth_header(client.post("/v1/auth/guest").json())
+
+    assert around(client, stranger, closet[0].id).status_code == 404

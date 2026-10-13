@@ -15,6 +15,12 @@ class User(Base):
     display_name: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    # Where and when the app was last opened; used to prepare the next morning's outfit.
+    latitude: Mapped[float | None]
+    longitude: Mapped[float | None]
+    utc_offset_minutes: Mapped[int | None]
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     identities: Mapped[list["AuthIdentity"]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )

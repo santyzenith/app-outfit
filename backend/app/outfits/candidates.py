@@ -46,6 +46,16 @@ class Candidates:
             missing.append(GarmentCategory.SHOES)
         return missing
 
+    def built_around(self, garment: Garment) -> "Candidates":
+        # The chosen garment becomes the only option for its slot.
+        by_category = {**self.by_category, garment.category: [garment]}
+        if garment.category == GarmentCategory.ONE_PIECE:
+            by_category[GarmentCategory.TOP] = by_category[GarmentCategory.BOTTOM] = []
+        elif garment.category in (GarmentCategory.TOP, GarmentCategory.BOTTOM):
+            by_category[GarmentCategory.ONE_PIECE] = []
+        wants_outerwear = self.wants_outerwear or garment.category == GarmentCategory.OUTERWEAR
+        return Candidates(by_category=by_category, wants_outerwear=wants_outerwear)
+
 
 def _suitable_warmth(forecast: Forecast | None) -> set[Warmth]:
     if forecast is None:

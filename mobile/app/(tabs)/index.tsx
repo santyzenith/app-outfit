@@ -14,11 +14,11 @@ import { ApiError } from '@/lib/api';
 import { type GarmentCategory, useGarments } from '@/lib/garments';
 import { useCoords } from '@/lib/location';
 import {
-  defaultOccasion,
   OCCASIONS,
   type Outfit,
   retryFailedOutfits,
   useAnotherOutfit,
+  useOccasion,
   useTodayOutfit,
   useWearOutfit,
 } from '@/lib/outfits';
@@ -76,7 +76,7 @@ function NotEnoughGarments({ error }: { error: ApiError }) {
 
 export default function TodayScreen() {
   const coords = useCoords();
-  const [occasion, setOccasion] = React.useState(defaultOccasion);
+  const { occasion, setOccasion } = useOccasion();
   const today = useTodayOutfit(occasion, coords);
   const another = useAnotherOutfit(coords);
   const wear = useWearOutfit(coords);

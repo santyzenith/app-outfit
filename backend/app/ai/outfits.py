@@ -34,9 +34,10 @@ Rules:
 - Do not repeat any of these combinations already shown today: {seen}
 - If fewer than {count} good outfits are possible, return fewer.
 - "explanation": one short sentence, at most 20 words, in neutral Latin American Spanish, \
-addressing the person as "tú", saying why the outfit works today. Use gender-neutral wording: \
-never use adjectives that reveal the person's gender (write "vas a estar a gusto", not \
-"cómoda" or "cómodo"). No emojis, no garment refs."""
+addressing the person as "tú", saying why the outfit works today. Talk about the outfit, never \
+describe the person: no adjectives or participles about them such as "cómodo", "protegida" or \
+"abrigado"; use verbs instead ("te protege de la lluvia", "te mantiene a gusto"). No emojis, no \
+garment refs."""
 
 _SLOT_SCHEMA = {"type": ["string", "null"]}
 SCHEMA = {

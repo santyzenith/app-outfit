@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { create } from 'zustand';
 
 import { api } from '@/lib/api';
 import { type Garment, type GarmentCategory, refreshGarments } from '@/lib/garments';
@@ -33,10 +34,20 @@ export function defaultOccasion(now = new Date()): Occasion {
   return 'casual';
 }
 
+// Shared so an outfit requested from another screen lands on the occasion shown in Today.
+export const useOccasion = create<{ occasion: Occasion; setOccasion: (next: Occasion) => void }>(
+  (set) => ({ occasion: defaultOccasion(), setOccasion: (occasion) => set({ occasion }) })
+);
+
 function localDay(now = new Date()): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const date = String(now.getDate()).padStart(2, '0');
   return `${now.getFullYear()}-${month}-${date}`;
+}
+
+// Minutes east of UTC; lets the server know when this phone's morning starts.
+function utcOffsetMinutes(): number {
+  return -new Date().getTimezoneOffset();
 }
 
 function coordsQuery(coords: Coords | null | undefined): string {
@@ -57,7 +68,9 @@ export function useTodayOutfit(occasion: Occasion, coords: Coords | null | undef
   return useQuery({
     queryKey: todayKey(occasion),
     queryFn: () =>
-      api<Outfit>(`/outfits/today?day=${localDay()}&occasion=${occasion}${coordsQuery(coords)}`),
+      api<Outfit>(
+        `/outfits/today?day=${localDay()}&occasion=${occasion}&tz=${utcOffsetMinutes()}${coordsQuery(coords)}`
+      ),
     // Wait for the location so the first outfit of the day already matches the weather.
     enabled: coords !== undefined,
     retry: false,
@@ -78,6 +91,17 @@ export function useAnotherOutfit(coords: Coords | null | undefined) {
       api<Outfit>(`/outfits/${outfit.id}/another?${coordsQuery(coords).slice(1)}`, {
         method: 'POST',
       }),
+    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion), outfit),
+  });
+}
+
+export function useBuildAroundGarment(coords: Coords | null | undefined) {
+  return useMutation({
+    mutationFn: (garmentId: string) => {
+      const { occasion } = useOccasion.getState();
+      const query = `day=${localDay()}&occasion=${occasion}${coordsQuery(coords)}`;
+      return api<Outfit>(`/outfits/around/${garmentId}?${query}`, { method: 'POST' });
+    },
     onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion), outfit),
   });
 }

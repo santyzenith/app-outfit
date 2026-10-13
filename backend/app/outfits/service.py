@@ -30,6 +30,10 @@ class OutfitNotFoundError(Exception):
     pass
 
 
+class GarmentNotReadyError(Exception):
+    pass
+
+
 def _combo(garment_ids: dict[GarmentCategory, uuid.UUID | None]) -> Combo:
     return frozenset(garment_id for garment_id in garment_ids.values() if garment_id)
 
@@ -79,6 +83,7 @@ def _generate(
     occasion: Occasion,
     forecast: Forecast | None,
     existing: list[Outfit],
+    around: Garment | None = None,
 ) -> list[Outfit]:
     garments = list(
         db.scalars(
@@ -86,6 +91,8 @@ def _generate(
         )
     )
     candidates = select_candidates(garments, occasion, forecast, day)
+    if around is not None:
+        candidates = candidates.built_around(around)
     if candidates.missing:
         raise NotEnoughGarmentsError(candidates.missing)
 
@@ -94,8 +101,8 @@ def _generate(
         choices = sugerir_outfits(candidates, occasion, forecast, list(seen), BATCH_SIZE)
     except AIError:
         choices = []
-    if not existing:
-        # The very first outfit of the day must never fail because of the model.
+    if not existing or around is not None:
+        # The first outfit of the day, or one asked for, must never fail because of the model.
         choices.append(_fallback_choice(candidates))
 
     outfits = []
@@ -123,6 +130,17 @@ def _generate(
     return outfits
 
 
+def remember_context(
+    db: Session, user: User, lat: float | None, lon: float | None, utc_offset_minutes: int | None
+) -> None:
+    user.last_seen_at = dt.datetime.now(dt.UTC)
+    if lat is not None and lon is not None:
+        user.latitude, user.longitude = lat, lon
+    if utc_offset_minutes is not None:
+        user.utc_offset_minutes = utc_offset_minutes
+    db.commit()
+
+
 def get_today(
     db: Session, user: User, day: dt.date, occasion: Occasion, forecast: Forecast | None
 ) -> Outfit:
@@ -131,6 +149,27 @@ def get_today(
         if _is_available(outfit):
             return outfit
     return _generate(db, user, day, occasion, forecast, existing)[0]
+
+
+def build_around(
+    db: Session,
+    user: User,
+    garment: Garment,
+    day: dt.date,
+    occasion: Occasion,
+    forecast: Forecast | None,
+) -> Outfit:
+    if garment.status != GarmentStatus.READY:
+        raise GarmentNotReadyError
+    existing = _for_day(db, user, day, occasion)
+    outfits = _generate(db, user, day, occasion, forecast, existing, around=garment)
+    # What was on screen steps aside so the requested outfit is the one shown.
+    now = dt.datetime.now(dt.UTC)
+    for outfit in existing:
+        if outfit.dismissed_at is None:
+            outfit.dismissed_at = now
+    db.commit()
+    return outfits[0]
 
 
 def list_worn(db: Session, user: User, limit: int) -> list[Outfit]:

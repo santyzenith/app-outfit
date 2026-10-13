@@ -19,6 +19,8 @@ import {
   useUpdateGarment,
   WARMTH_OPTIONS,
 } from '@/lib/garments';
+import { useCoords } from '@/lib/location';
+import { useBuildAroundGarment } from '@/lib/outfits';
 
 function Field({ label, children }: React.PropsWithChildren<{ label: string }>) {
   return (
@@ -35,6 +37,7 @@ function GarmentForm({ garment }: { garment: Garment }) {
   const image = useGarmentImage(garment, showOriginal ? 'original' : undefined);
   const update = useUpdateGarment();
   const remove = useDeleteGarment();
+  const buildAround = useBuildAroundGarment(useCoords());
   const [form, setForm] = React.useState<GarmentEdit>({
     name: garment.name ?? '',
     category: garment.category,
@@ -123,6 +126,20 @@ function GarmentForm({ garment }: { garment: Garment }) {
           {update.isPending ? 'Guardando…' : 'Guardar cambios'}
         </Text>
       </Button>
+      <Button
+        variant="outline"
+        size="lg"
+        disabled={buildAround.isPending}
+        onPress={() => buildAround.mutate(garment.id, { onSuccess: () => router.dismissTo('/') })}>
+        <Text className="font-sans-semibold">
+          {buildAround.isPending ? 'Armando…' : 'Armar un outfit con esta prenda'}
+        </Text>
+      </Button>
+      {buildAround.isError && (
+        <Text className="text-center text-sm text-muted-foreground">
+          Aún no hay prendas suficientes para combinarla.
+        </Text>
+      )}
       <Button variant="ghost" onPress={confirmDelete}>
         <Text className="text-destructive">Eliminar prenda</Text>
       </Button>
