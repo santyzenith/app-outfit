@@ -50,7 +50,8 @@ ANALYZE_SCHEMA = {
 RECREATE_PROMPT = (
     "This is a casual photo of a clothing item taken by its owner. Recreate exactly this same "
     "item as a clean e-commerce catalog photo: the item alone, front view, neatly laid flat and "
-    "unwrinkled, evenly lit, centered, on a plain pure white background. No hanger, no person, "
+    "unwrinkled, evenly lit, centered, on a plain pure white background, "
+    "with no shadow under or around it. No hanger, no person, "
     "no furniture, no props. Preserve exactly the original colors, fabric texture, pattern, "
     "logos, prints, text, buttons, zippers, stitching and proportions. Do not add, remove or "
     "redesign anything. If the item is folded, rolled or partly hidden, show it fully unfolded "
@@ -61,7 +62,8 @@ RECREATE_PROMPT = (
 ONE_OF_MANY_PROMPT = (
     "This photo shows several clothing items. Recreate ONLY this one: {item}. Show exactly that "
     "same item as a clean e-commerce catalog photo: the item alone, front view, neatly laid flat "
-    "and unwrinkled, evenly lit, centered, on a plain pure white background. No other items, no "
+    "and unwrinkled, evenly lit, centered, on a plain pure white background, "
+    "with no shadow under or around it. No other items, no "
     "hanger, no person, no furniture, no props. Preserve exactly its original colors, fabric "
     "texture, pattern, logos, prints, text, buttons, zippers, stitching and proportions. Do not "
     "add, remove or redesign anything. If the item is footwear, show the pair side by side."

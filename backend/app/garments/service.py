@@ -1,11 +1,13 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import jobs
 from app.ai.garments import GarmentAnalysis
+from app.config import get_settings
 from app.garments.images import normalize_photo
 from app.models import Garment, GarmentStatus, User
 from app.storage import Storage
@@ -21,11 +23,23 @@ class GarmentNotRetryableError(Exception):
     pass
 
 
+class UploadLimitError(Exception):
+    pass
+
+
 def _enqueue_processing(db: Session, garment: Garment) -> None:
     jobs.enqueue(db, PROCESS_JOB, {"garment_id": str(garment.id)})
 
 
 def create_from_photo(db: Session, storage: Storage, user: User, photo: bytes) -> Garment:
+    since = datetime.now(UTC) - timedelta(days=1)
+    recent = db.scalar(
+        select(func.count())
+        .select_from(Garment)
+        .where(Garment.user_id == user.id, Garment.created_at > since)
+    )
+    if recent >= get_settings().garments_per_day:
+        raise UploadLimitError
     garment_id = uuid.uuid4()
     original_path = storage.save(user.id, f"{garment_id}_original.jpg", normalize_photo(photo))
     garment = Garment(id=garment_id, user_id=user.id, original_path=original_path)

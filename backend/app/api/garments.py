@@ -33,6 +33,8 @@ def upload_garment(photo: UploadFile, user: CurrentUser, db: DbSession) -> Garme
         garment = service.create_from_photo(db, get_storage(), user, data)
     except InvalidImageError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_image") from exc
+    except service.UploadLimitError as exc:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "upload_limit_reached") from exc
     return GarmentOut.model_validate(garment)
 
 

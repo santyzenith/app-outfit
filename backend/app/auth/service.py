@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from app.auth.providers import SocialProfile
 from app.auth.tokens import create_access_token, hash_refresh_token, new_refresh_token
 from app.config import get_settings
-from app.models import AuthIdentity, RefreshToken, User
+from app.models import AuthIdentity, Garment, Outfit, RefreshToken, User
+from app.storage import get_storage
 
 # A just-rotated token may be retried once the response got lost on a bad connection.
 REUSE_GRACE = timedelta(seconds=60)
@@ -32,6 +33,25 @@ def create_guest(db: Session) -> User:
     return user
 
 
+def _merge_guest(db: Session, guest: User, account: User) -> None:
+    # What the guest added before signing in moves to the account they already had.
+    storage = get_storage()
+    for garment in db.scalars(select(Garment).where(Garment.user_id == guest.id)):
+        garment.user_id = account.id
+        garment.original_path = storage.move(garment.original_path, account.id)
+        if garment.image_path:
+            garment.image_path = storage.move(garment.image_path, account.id)
+    db.execute(
+        update(Outfit)
+        .where(Outfit.user_id == guest.id, Outfit.worn_at.is_not(None))
+        .values(user_id=account.id)
+    )
+    db.flush()
+    db.delete(guest)
+    db.commit()
+    storage.delete_user(guest.id)
+
+
 def login_with_provider(db: Session, profile: SocialProfile, current_user: User | None) -> User:
     identity = db.scalar(
         select(AuthIdentity).where(
@@ -40,6 +60,8 @@ def login_with_provider(db: Session, profile: SocialProfile, current_user: User 
         )
     )
     if identity is not None:
+        if current_user is not None and current_user.is_guest:
+            _merge_guest(db, current_user, identity.user)
         return identity.user
 
     # A guest keeps their account (and closet) when they sign in for the first time.

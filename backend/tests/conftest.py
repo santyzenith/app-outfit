@@ -26,6 +26,7 @@ from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from app.api.auth import guest_limiter  # noqa: E402
 from app.auth import providers  # noqa: E402
 from app.db import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
@@ -70,6 +71,11 @@ def db() -> Session:
     session.close()
     transaction.rollback()
     connection.close()
+
+
+@pytest.fixture(autouse=True)
+def fresh_rate_limits() -> None:
+    guest_limiter.reset()
 
 
 @pytest.fixture

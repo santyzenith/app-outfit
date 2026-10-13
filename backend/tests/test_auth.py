@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import update
 
 from app.auth.service import REUSE_GRACE
+from app.config import get_settings
 from app.models import RefreshToken
 from tests.conftest import auth_header
 
@@ -149,3 +150,14 @@ def test_deleting_the_account_removes_everything(client, db, make_id_token):
     body = {"refresh_token": session["refresh_token"]}
     assert client.post("/v1/auth/refresh", json=body).status_code == 401
     assert db.query(RefreshToken).count() == 0
+
+
+def test_guest_accounts_are_limited_per_address(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "guest_accounts_per_hour", 2)
+    assert client.post("/v1/auth/guest").status_code == 201
+    assert client.post("/v1/auth/guest").status_code == 201
+
+    response = client.post("/v1/auth/guest")
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == "too_many_guest_accounts"

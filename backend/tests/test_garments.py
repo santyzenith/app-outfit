@@ -8,6 +8,7 @@ from sqlalchemy import select, update
 from app import jobs
 from app.ai.garments import GarmentAnalysis
 from app.ai.openrouter import AIError
+from app.config import get_settings
 from app.garments import processing
 from app.garments.images import normalize_catalog_image
 from app.models import Formality, GarmentCategory, Job, JobStatus, Warmth
@@ -364,3 +365,32 @@ def test_regenerating_replaces_the_catalog_image_file(client, db, user, fake_ai,
     catalog_files = [path for path in user_folder.iterdir() if "_catalog_" in path.name]
 
     assert len(catalog_files) == 1
+
+
+def test_uploads_stop_at_the_daily_limit(client, user, monkeypatch):
+    monkeypatch.setattr(get_settings(), "garments_per_day", 1)
+    assert upload(client, user).status_code == 202
+
+    response = upload(client, user)
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == "upload_limit_reached"
+
+
+def test_a_guest_closet_moves_to_the_account_they_sign_in_to(
+    client, db, user, fake_ai, make_id_token
+):
+    account = client.post("/v1/auth/google", json={"id_token": make_id_token()}).json()
+    garment = upload(client, user).json()
+    jobs.run_next_job(db)
+    guest_id = client.get("/v1/me", headers=user).json()["id"]
+
+    client.post("/v1/auth/google", json={"id_token": make_id_token()}, headers=user)
+
+    owner = auth_header(account)
+    assert [g["id"] for g in client.get("/v1/garments", headers=owner).json()] == [garment["id"]]
+    url = f"/v1/garments/{garment['id']}/image"
+    assert client.get(url, headers=owner).status_code == 200
+    assert client.get(f"{url}?variant=original", headers=owner).status_code == 200
+    assert not get_storage().path(guest_id).exists()
+    assert client.get("/v1/me", headers=user).status_code == 401

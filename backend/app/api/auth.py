@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.schemas import IdTokenIn, RefreshTokenIn, SessionOut, UserOut
 from app.auth import service
@@ -9,9 +9,12 @@ from app.auth.providers import (
     ProviderNotConfiguredError,
     verify_id_token,
 )
+from app.config import get_settings
 from app.models import User
+from app.ratelimit import RateLimiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+guest_limiter = RateLimiter(window_seconds=3600)
 
 
 def _session(user: User, tokens: service.TokenPair) -> SessionOut:
@@ -24,7 +27,10 @@ def _session(user: User, tokens: service.TokenPair) -> SessionOut:
 
 
 @router.post("/guest", status_code=status.HTTP_201_CREATED)
-def create_guest(db: DbSession) -> SessionOut:
+def create_guest(request: Request, db: DbSession) -> SessionOut:
+    address = request.client.host if request.client else "unknown"
+    if not guest_limiter.allow(address, get_settings().guest_accounts_per_hour):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too_many_guest_accounts")
     user = service.create_guest(db)
     return _session(user, service.issue_tokens(db, user))
 

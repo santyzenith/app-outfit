@@ -28,6 +28,13 @@ class Storage:
             raise ValueError("path escapes the storage root")
         return target
 
+    def move(self, relative_path: str, user_id: uuid.UUID) -> str:
+        new_path = f"{user_id}/{Path(relative_path).name}"
+        target = self.path(new_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        self.path(relative_path).replace(target)
+        return new_path
+
     def delete(self, relative_path: str) -> None:
         self.path(relative_path).unlink(missing_ok=True)
 
