@@ -1,5 +1,6 @@
 import enum
 import uuid
+import zlib
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String, func
@@ -69,5 +70,12 @@ class Garment(Base):
     image_path: Mapped[str | None] = mapped_column(String(255))
 
     last_worn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @property
+    def image_version(self) -> str | None:
+        # Changes whenever the catalog image is replaced; clients use it to refresh their cache.
+        if self.image_path is None:
+            return None
+        return format(zlib.crc32(self.image_path.encode()), "08x")
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -9,11 +9,10 @@ Momento de uso principal: 7am, medio dormido, con una mano, 30 segundos.
 Público unisex, hispanohablante.
 
 ## Estado del proyecto
-Se está reconstruyendo desde cero (decisión de octubre 2026).
-`app_outfit_backend/` y `app_outfit_frontend/` son el intento anterior:
-sirven solo como referencia, no se extienden ni se corrigen. Lo rescatable
-es la separación en capas del backend y los tokens de diseño del frontend.
-El código nuevo vive en `backend/` (y después `mobile/`).
+Reconstruido desde cero en octubre de 2026; el intento anterior se eliminó.
+Monorepo en `github.com/santyzenith/app-outfit`: `backend/` (API y worker),
+`mobile/` (app), `docker-compose.yml` (entorno local) e `image_spike/`
+(pruebas de modelos de imagen).
 
 ## Stack
 

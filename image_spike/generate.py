@@ -14,7 +14,7 @@ from PIL import Image
 ROOT = Path(__file__).parent
 OUT = ROOT / "out" / "gen"
 LEDGER = ROOT / "out" / "costs.jsonl"
-ENV_FILE = ROOT.parent / "app_outfit_backend" / ".env"
+ENV_FILE = ROOT.parent / "backend" / ".env"
 
 SINGLE_PROMPT = (
     "This is a casual photo of a clothing item taken by its owner. Recreate exactly this same "

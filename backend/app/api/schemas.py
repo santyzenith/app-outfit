@@ -42,6 +42,7 @@ class GarmentOut(BaseModel):
     color: str | None
     warmth: Warmth | None
     formality: Formality | None
+    image_version: str | None
     created_at: datetime
 
 

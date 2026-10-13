@@ -17,10 +17,6 @@ dist/
 # Image test outputs
 image_spike/out/
 
-# Previous attempt, kept on disk only as reference
-app_outfit_backend/
-app_outfit_frontend/
-
 # Uploaded garment photos (local development)
 backend/storage/
 

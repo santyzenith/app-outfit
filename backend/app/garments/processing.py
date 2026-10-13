@@ -35,7 +35,12 @@ def process_garment(db: Session, payload: jobs.Payload) -> None:
         return
 
     catalog_image = normalize_catalog_image(recrear_prenda(photo))
-    garment.image_path = storage.save(garment.user_id, f"{garment.id}_catalog.jpg", catalog_image)
+    previous_image = garment.image_path
+    # A new file name each time, so phones never show a cached older version.
+    filename = f"{garment.id}_catalog_{uuid.uuid4().hex[:8]}.jpg"
+    garment.image_path = storage.save(garment.user_id, filename, catalog_image)
+    if previous_image:
+        storage.delete(previous_image)
     garment.category = analysis.category
     garment.name = analysis.name
     garment.color = analysis.color

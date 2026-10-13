@@ -18,6 +18,7 @@ export type Garment = {
   color: string | null;
   warmth: 'light' | 'medium' | 'warm' | null;
   formality: 'casual' | 'smart' | 'formal' | null;
+  image_version: string | null;
   created_at: string;
 };
 
@@ -95,7 +96,8 @@ export function useGarmentImage(garment: Garment, forced?: 'catalog' | 'original
   const accessToken = useSession((state) => state.accessToken);
   const variant = forced ?? (garment.status === 'ready' ? 'catalog' : 'original');
   return {
-    uri: `${API_URL}/v1/garments/${garment.id}/image?variant=${variant}`,
+    // The version changes when the image is replaced, so a cached copy is never shown.
+    uri: `${API_URL}/v1/garments/${garment.id}/image?variant=${variant}&v=${garment.image_version}`,
     headers: { Authorization: `Bearer ${accessToken}` },
   };
 }

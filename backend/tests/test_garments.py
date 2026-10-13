@@ -9,6 +9,7 @@ from app import jobs
 from app.ai.garments import GarmentAnalysis
 from app.ai.openrouter import AIError
 from app.garments import processing
+from app.garments.images import normalize_catalog_image
 from app.models import Formality, GarmentCategory, Job, JobStatus, Warmth
 from app.storage import get_storage
 from tests.conftest import auth_header
@@ -111,6 +112,7 @@ def test_processing_catalogs_the_garment(client, db, user, fake_ai):
     assert ready["category"] == "top"
     assert ready["name"] == "Camiseta azul"
     assert ready["warmth"] == "light"
+    assert ready["image_version"]
     catalog = client.get(f"/v1/garments/{garment['id']}/image", headers=user)
     assert catalog.status_code == 200
     assert Image.open(io.BytesIO(catalog.content)).size == (1024, 1024)
@@ -250,3 +252,41 @@ def test_jobs_abandoned_by_a_dead_worker_are_queued_again(client, db, user):
 def test_storage_refuses_paths_outside_its_root():
     with pytest.raises(ValueError):
         get_storage().path("../outside.txt")
+
+
+def png_bytes(image: Image.Image) -> bytes:
+    buffer = io.BytesIO()
+    image.save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+def test_catalog_images_get_a_pure_white_background():
+    almost_white = Image.new("RGB", (400, 400), (250, 251, 252))
+    almost_white.paste((30, 40, 90), (150, 150, 250, 250))
+
+    result = Image.open(io.BytesIO(normalize_catalog_image(png_bytes(almost_white))))
+
+    assert min(result.getpixel((3, 3))) >= 254
+    assert max(result.getpixel((200, 200))) < 100
+
+
+def test_catalog_images_that_fill_the_frame_keep_their_colors():
+    dark = Image.new("RGB", (400, 400), (60, 60, 60))
+
+    result = Image.open(io.BytesIO(normalize_catalog_image(png_bytes(dark))))
+
+    assert max(result.getpixel((200, 200))) < 70
+
+
+def test_regenerating_replaces_the_catalog_image_file(client, db, user, fake_ai, monkeypatch):
+    monkeypatch.setattr(processing, "recrear_prenda", failing_model)
+    garment = upload(client, user).json()
+    run_all_jobs(db)
+    monkeypatch.setattr(processing, "recrear_prenda", lambda photo: image_bytes(fmt="PNG"))
+    client.post(f"/v1/garments/{garment['id']}/retry", headers=user)
+    run_all_jobs(db)
+
+    user_folder = get_storage().path(client.get("/v1/me", headers=user).json()["id"])
+    catalog_files = [path for path in user_folder.iterdir() if "_catalog_" in path.name]
+
+    assert len(catalog_files) == 1
