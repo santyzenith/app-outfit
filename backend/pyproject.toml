@@ -1,0 +1,37 @@
+[project]
+name = "outfit-backend"
+version = "0.1.0"
+description = "Backend for the virtual closet app (FastAPI + PostgreSQL)"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.18",
+    "fastapi>=0.139",
+    "httpx>=0.28.1",
+    "pillow>=12.3.0",
+    "psycopg[binary]>=3.3",
+    "pydantic-settings>=2.14",
+    "pyjwt[crypto]>=2.13",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2.0.51",
+    "uvicorn[standard]>=0.51",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "ruff>=0.15",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

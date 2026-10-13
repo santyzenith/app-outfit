@@ -1,0 +1,111 @@
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { File, UploadType } from 'expo-file-system';
+
+import { api, jsonBody } from '@/lib/api';
+import { API_URL } from '@/lib/config';
+import { queryClient } from '@/lib/query';
+import { getAccessToken, useSession } from '@/lib/session';
+
+export type GarmentStatus = 'processing' | 'ready' | 'failed';
+export type GarmentCategory = 'top' | 'bottom' | 'one_piece' | 'outerwear' | 'shoes' | 'accessory';
+
+export type Garment = {
+  id: string;
+  status: GarmentStatus;
+  failure_reason: string | null;
+  category: GarmentCategory | null;
+  name: string | null;
+  color: string | null;
+  warmth: 'light' | 'medium' | 'warm' | null;
+  formality: 'casual' | 'smart' | 'formal' | null;
+  created_at: string;
+};
+
+export type GarmentEdit = {
+  name: string;
+  category: GarmentCategory | null;
+  warmth: Garment['warmth'];
+  formality: Garment['formality'];
+};
+
+export const CATEGORY_OPTIONS = [
+  { value: 'top', label: 'Parte de arriba' },
+  { value: 'bottom', label: 'Parte de abajo' },
+  { value: 'one_piece', label: 'Pieza entera' },
+  { value: 'outerwear', label: 'Capa' },
+  { value: 'shoes', label: 'Zapatos' },
+  { value: 'accessory', label: 'Accesorio' },
+] as const;
+
+export const WARMTH_OPTIONS = [
+  { value: 'light', label: 'Ligero' },
+  { value: 'medium', label: 'Medio' },
+  { value: 'warm', label: 'Abrigado' },
+] as const;
+
+export const FORMALITY_OPTIONS = [
+  { value: 'casual', label: 'Casual' },
+  { value: 'smart', label: 'Elegante' },
+  { value: 'formal', label: 'Formal' },
+] as const;
+
+const GARMENTS_KEY = ['garments'];
+const PROCESSING_POLL_MS = 3000;
+
+export function refreshGarments(): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: GARMENTS_KEY });
+}
+
+export function useGarments() {
+  return useQuery({
+    queryKey: GARMENTS_KEY,
+    queryFn: () => api<Garment[]>('/garments'),
+    // Keep asking while the server is still cataloguing something.
+    refetchInterval: (query) =>
+      query.state.data?.some((garment) => garment.status === 'processing')
+        ? PROCESSING_POLL_MS
+        : false,
+  });
+}
+
+export function useRetryGarment() {
+  return useMutation({
+    mutationFn: (id: string) => api<Garment>(`/garments/${id}/retry`, { method: 'POST' }),
+    onSettled: refreshGarments,
+  });
+}
+
+export function useUpdateGarment() {
+  return useMutation({
+    mutationFn: ({ id, changes }: { id: string; changes: GarmentEdit }) =>
+      api<Garment>(`/garments/${id}`, jsonBody('PATCH', changes)),
+    onSettled: refreshGarments,
+  });
+}
+
+export function useDeleteGarment() {
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/garments/${id}`, { method: 'DELETE' }),
+    onSettled: refreshGarments,
+  });
+}
+
+export function useGarmentImage(garment: Garment, forced?: 'catalog' | 'original') {
+  // Photos are private, so the image request carries the session token.
+  const accessToken = useSession((state) => state.accessToken);
+  const variant = forced ?? (garment.status === 'ready' ? 'catalog' : 'original');
+  return {
+    uri: `${API_URL}/v1/garments/${garment.id}/image?variant=${variant}`,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  };
+}
+
+export async function uploadGarmentPhoto(uri: string): Promise<void> {
+  const result = await new File(uri).upload(`${API_URL}/v1/garments`, {
+    uploadType: UploadType.MULTIPART,
+    fieldName: 'photo',
+    mimeType: 'image/jpeg',
+    headers: { Authorization: `Bearer ${await getAccessToken()}` },
+  });
+  if (result.status !== 202) throw new Error(`upload failed with ${result.status}`);
+}

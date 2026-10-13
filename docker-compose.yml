@@ -1,0 +1,51 @@
+name: outfit
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: outfit
+      POSTGRES_PASSWORD: outfit
+      POSTGRES_DB: outfit
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outfit -d outfit"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment: &backend_environment
+      DATABASE_URL: postgresql+psycopg://outfit:outfit@db:5432/outfit
+      STORAGE_DIR: /data/storage
+    volumes:
+      - storage_data:/data/storage
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Processes the queued jobs (garment photos) outside the request cycle.
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    command: ["uv", "run", "--no-dev", "python", "-m", "app.worker"]
+    env_file: ./backend/.env
+    environment: *backend_environment
+    volumes:
+      - storage_data:/data/storage
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  db_data:
+  storage_data:

@@ -1,0 +1,118 @@
+import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
+
+from app.auth.providers import SocialProfile
+from app.auth.tokens import create_access_token, hash_refresh_token, new_refresh_token
+from app.config import get_settings
+from app.models import AuthIdentity, RefreshToken, User
+
+# A just-rotated token may be retried once the response got lost on a bad connection.
+REUSE_GRACE = timedelta(seconds=60)
+
+
+class InvalidRefreshTokenError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class TokenPair:
+    access_token: str
+    refresh_token: str
+    expires_in: int
+
+
+def create_guest(db: Session) -> User:
+    user = User()
+    db.add(user)
+    db.commit()
+    return user
+
+
+def login_with_provider(db: Session, profile: SocialProfile, current_user: User | None) -> User:
+    identity = db.scalar(
+        select(AuthIdentity).where(
+            AuthIdentity.provider == profile.provider,
+            AuthIdentity.subject == profile.subject,
+        )
+    )
+    if identity is not None:
+        return identity.user
+
+    # A guest keeps their account (and closet) when they sign in for the first time.
+    user = current_user if current_user is not None and current_user.is_guest else User()
+    user.email = user.email or profile.email
+    user.display_name = user.display_name or profile.name
+    user.identities.append(
+        AuthIdentity(provider=profile.provider, subject=profile.subject, email=profile.email)
+    )
+    db.add(user)
+    db.commit()
+    return user
+
+
+def issue_tokens(db: Session, user: User, family_id: uuid.UUID | None = None) -> TokenPair:
+    settings = get_settings()
+    raw_token = new_refresh_token()
+    db.add(
+        RefreshToken(
+            user_id=user.id,
+            family_id=family_id or uuid.uuid4(),
+            token_hash=hash_refresh_token(raw_token),
+            expires_at=datetime.now(UTC) + timedelta(days=settings.refresh_token_days),
+        )
+    )
+    db.commit()
+    return TokenPair(
+        access_token=create_access_token(user.id),
+        refresh_token=raw_token,
+        expires_in=settings.access_token_minutes * 60,
+    )
+
+
+def _find_refresh_token(db: Session, raw_token: str) -> RefreshToken | None:
+    return db.scalar(
+        select(RefreshToken).where(RefreshToken.token_hash == hash_refresh_token(raw_token))
+    )
+
+
+def _revoke_family(db: Session, family_id: uuid.UUID) -> None:
+    db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.family_id == family_id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(UTC))
+    )
+    db.commit()
+
+
+def rotate_refresh_token(db: Session, raw_token: str) -> tuple[User, TokenPair]:
+    now = datetime.now(UTC)
+    token = _find_refresh_token(db, raw_token)
+    if token is None or token.revoked_at is not None or token.expires_at <= now:
+        raise InvalidRefreshTokenError
+
+    if token.used_at is not None and now - token.used_at > REUSE_GRACE:
+        # An old token showing up again means it was copied: end the whole session.
+        _revoke_family(db, token.family_id)
+        raise InvalidRefreshTokenError
+
+    user = db.get(User, token.user_id)
+    if user is None:
+        raise InvalidRefreshTokenError
+
+    token.used_at = token.used_at or now
+    return user, issue_tokens(db, user, family_id=token.family_id)
+
+
+def logout(db: Session, raw_token: str) -> None:
+    token = _find_refresh_token(db, raw_token)
+    if token is not None:
+        _revoke_family(db, token.family_id)
+
+
+def delete_account(db: Session, user: User) -> None:
+    db.delete(user)
+    db.commit()

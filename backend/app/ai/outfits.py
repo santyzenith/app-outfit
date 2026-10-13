@@ -1,0 +1,125 @@
+import json
+import uuid
+from dataclasses import dataclass
+
+from app.ai import openrouter
+from app.config import get_settings
+from app.models import Garment, GarmentCategory, Occasion
+from app.outfits.candidates import Candidates
+from app.outfits.weather import Forecast
+
+OCCASION_DESCRIPTIONS = {
+    Occasion.CASUAL: "a relaxed everyday day",
+    Occasion.WORK: "a day at work or the office",
+    Occasion.NIGHT_OUT: "going out with friends or on a date",
+    Occasion.FORMAL: "a formal event",
+}
+
+SLOTS = [category.value for category in GarmentCategory]
+
+PROMPT = """You are a personal stylist. Build {count} different outfits for {occasion} using ONLY \
+the garments listed below, which the person already owns.
+
+Weather today: {weather}
+
+Garments (JSON): {garments}
+
+Rules:
+- Every outfit needs shoes, plus either one top and one bottom, or one one_piece. Never both.
+- {outerwear_rule}
+- An accessory is optional, at most one.
+- Use each garment only in the slot of its own category and refer to it by its "ref".
+- Prefer combinations whose colors and formality work well together.
+- The outfits must differ from each other in their top, bottom or one_piece.
+- Do not repeat any of these combinations already shown today: {seen}
+- If fewer than {count} good outfits are possible, return fewer.
+- "explanation": one short sentence, at most 20 words, in neutral Latin American Spanish, \
+addressing the person as "tú", saying why the outfit works today. Use gender-neutral wording: \
+never use adjectives that reveal the person's gender (write "vas a estar a gusto", not \
+"cómoda" or "cómodo"). No emojis, no garment refs."""
+
+_SLOT_SCHEMA = {"type": ["string", "null"]}
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "outfits": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    **dict.fromkeys(SLOTS, _SLOT_SCHEMA),
+                    "explanation": {"type": "string"},
+                },
+                "required": [*SLOTS, "explanation"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["outfits"],
+    "additionalProperties": False,
+}
+
+
+@dataclass(frozen=True)
+class OutfitChoice:
+    garment_ids: dict[GarmentCategory, uuid.UUID | None]
+    explanation: str
+
+
+def _describe_weather(forecast: Forecast | None) -> str:
+    if forecast is None:
+        return "unknown"
+    rain = ", rain is likely" if forecast.rain else ""
+    return f"between {forecast.min_c:.0f} and {forecast.max_c:.0f} degrees Celsius{rain}"
+
+
+def _describe_garment(ref: str, garment: Garment) -> dict[str, str | None]:
+    return {
+        "ref": ref,
+        "category": garment.category.value,
+        "name": garment.name,
+        "color": garment.color,
+        "warmth": garment.warmth.value if garment.warmth else None,
+        "formality": garment.formality.value if garment.formality else None,
+    }
+
+
+def sugerir_outfits(
+    candidates: Candidates,
+    occasion: Occasion,
+    forecast: Forecast | None,
+    seen: list[frozenset[uuid.UUID]],
+    count: int,
+) -> list[OutfitChoice]:
+    # Short refs instead of UUIDs: fewer tokens and no chance of a mistyped id.
+    garments = [g for group in candidates.by_category.values() for g in group]
+    by_ref = {f"g{index}": garment for index, garment in enumerate(garments, start=1)}
+    ref_of = {garment.id: ref for ref, garment in by_ref.items()}
+
+    prompt = PROMPT.format(
+        count=count,
+        occasion=OCCASION_DESCRIPTIONS[occasion],
+        weather=_describe_weather(forecast),
+        garments=json.dumps(
+            [_describe_garment(ref, garment) for ref, garment in by_ref.items()],
+            ensure_ascii=False,
+        ),
+        outerwear_rule=(
+            "Add one outerwear piece: it will be cold or rainy."
+            if candidates.wants_outerwear
+            else "Do not add outerwear unless the outfit clearly needs it."
+        ),
+        seen=json.dumps([sorted(ref_of[i] for i in combo if i in ref_of) for combo in seen]),
+    )
+    data = openrouter.chat_json(get_settings().outfit_model, prompt, SCHEMA)
+
+    choices = []
+    for raw in data.get("outfits", []):
+        garment_ids: dict[GarmentCategory, uuid.UUID | None] = {}
+        for category in GarmentCategory:
+            garment = by_ref.get(raw.get(category.value) or "")
+            # A ref used in the wrong slot is dropped rather than trusted.
+            valid = garment is not None and garment.category == category
+            garment_ids[category] = garment.id if valid else None
+        choices.append(OutfitChoice(garment_ids, str(raw.get("explanation", "")).strip()))
+    return choices

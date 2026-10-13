@@ -1,0 +1,145 @@
+import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
+import * as React from 'react';
+import { Alert, ScrollView, View } from 'react-native';
+
+import { ChoiceChips } from '@/components/app/choice-chips';
+import { Spinner } from '@/components/app/spinner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Text } from '@/components/ui/text';
+import {
+  CATEGORY_OPTIONS,
+  FORMALITY_OPTIONS,
+  type Garment,
+  type GarmentEdit,
+  useDeleteGarment,
+  useGarmentImage,
+  useGarments,
+  useUpdateGarment,
+  WARMTH_OPTIONS,
+} from '@/lib/garments';
+
+function Field({ label, children }: React.PropsWithChildren<{ label: string }>) {
+  return (
+    <View className="gap-2">
+      <Text className="font-sans-medium text-sm text-muted-foreground">{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+// Mounted only once the garment is loaded, so the form can start from its values.
+function GarmentForm({ garment }: { garment: Garment }) {
+  const [showOriginal, setShowOriginal] = React.useState(false);
+  const image = useGarmentImage(garment, showOriginal ? 'original' : undefined);
+  const update = useUpdateGarment();
+  const remove = useDeleteGarment();
+  const [form, setForm] = React.useState<GarmentEdit>({
+    name: garment.name ?? '',
+    category: garment.category,
+    warmth: garment.warmth,
+    formality: garment.formality,
+  });
+
+  const changed =
+    form.name !== (garment.name ?? '') ||
+    form.category !== garment.category ||
+    form.warmth !== garment.warmth ||
+    form.formality !== garment.formality;
+  const canSave = changed && form.name.trim().length > 0 && !update.isPending;
+
+  function save(): void {
+    update.mutate({ id: garment.id, changes: { ...form, name: form.name.trim() } });
+  }
+
+  function confirmDelete(): void {
+    Alert.alert('¿Eliminar esta prenda?', 'Se borrará de tu armario.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: () => remove.mutate(garment.id, { onSuccess: () => router.back() }),
+      },
+    ]);
+  }
+
+  return (
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerClassName="gap-5 p-4 pb-10"
+      keyboardShouldPersistTaps="handled">
+      <View className="aspect-square overflow-hidden rounded-2xl bg-white">
+        <Image source={image} contentFit="contain" style={{ flex: 1 }} transition={150} />
+      </View>
+      <Button variant="ghost" size="sm" onPress={() => setShowOriginal((value) => !value)}>
+        <Text className="font-sans-semibold">
+          {showOriginal ? 'Ver imagen del armario' : 'Ver mi foto original'}
+        </Text>
+      </Button>
+
+      <Field label="Nombre">
+        <Input
+          value={form.name}
+          onChangeText={(name) => setForm((current) => ({ ...current, name }))}
+          maxLength={120}
+          returnKeyType="done"
+        />
+      </Field>
+
+      <Field label="Tipo">
+        <ChoiceChips
+          layout="wrap"
+          options={CATEGORY_OPTIONS}
+          selected={form.category}
+          onSelect={(category) => setForm((current) => ({ ...current, category }))}
+        />
+      </Field>
+
+      <Field label="Abrigo">
+        <ChoiceChips
+          options={WARMTH_OPTIONS}
+          selected={form.warmth}
+          onSelect={(warmth) => setForm((current) => ({ ...current, warmth }))}
+        />
+      </Field>
+
+      <Field label="Formalidad">
+        <ChoiceChips
+          options={FORMALITY_OPTIONS}
+          selected={form.formality}
+          onSelect={(formality) => setForm((current) => ({ ...current, formality }))}
+        />
+      </Field>
+
+      {update.isError && (
+        <Text className="text-center text-sm text-destructive">
+          No pudimos guardar los cambios. Inténtalo de nuevo.
+        </Text>
+      )}
+
+      <Button size="lg" disabled={!canSave} onPress={save}>
+        <Text className="font-sans-semibold">
+          {update.isPending ? 'Guardando…' : 'Guardar cambios'}
+        </Text>
+      </Button>
+      <Button variant="ghost" onPress={confirmDelete}>
+        <Text className="text-destructive">Eliminar prenda</Text>
+      </Button>
+    </ScrollView>
+  );
+}
+
+export default function GarmentScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { data: garments, isLoading } = useGarments();
+  const garment = garments?.find((item) => item.id === id);
+
+  if (garment) return <GarmentForm garment={garment} />;
+
+  return (
+    <View className="flex-1 items-center justify-center bg-background px-8">
+      {isLoading ? <Spinner /> : <Text className="text-center">Esta prenda ya no existe.</Text>}
+    </View>
+  );
+}

@@ -1,0 +1,28 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+
+# Image test outputs
+image_spike/out/
+
+# Previous attempt, kept on disk only as reference
+app_outfit_backend/
+app_outfit_frontend/
+
+# Uploaded garment photos (local development)
+backend/storage/
+
+# Third-party test photos (see image_spike/photos/sources.json for where they came from)
+image_spike/photos/*.jpg

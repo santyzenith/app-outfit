@@ -1,0 +1,55 @@
+import datetime as dt
+import enum
+import uuid
+
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Text, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db import Base
+from app.models.garment import GarmentCategory, text_enum
+
+
+class Occasion(enum.StrEnum):
+    CASUAL = "casual"
+    WORK = "work"
+    NIGHT_OUT = "night_out"
+    FORMAL = "formal"
+
+
+def _garment_slot() -> Mapped[uuid.UUID | None]:
+    # A deleted garment empties its slot instead of deleting the whole outfit.
+    return mapped_column(ForeignKey("garments.id", ondelete="SET NULL"))
+
+
+class Outfit(Base):
+    __tablename__ = "outfits"
+    __table_args__ = (Index("ix_outfits_user_day_occasion", "user_id", "day", "occasion"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    # The user's local calendar day, sent by the phone.
+    day: Mapped[dt.date] = mapped_column(Date)
+    occasion: Mapped[Occasion] = mapped_column(text_enum(Occasion))
+    position: Mapped[int]
+
+    top_id: Mapped[uuid.UUID | None] = _garment_slot()
+    bottom_id: Mapped[uuid.UUID | None] = _garment_slot()
+    one_piece_id: Mapped[uuid.UUID | None] = _garment_slot()
+    outerwear_id: Mapped[uuid.UUID | None] = _garment_slot()
+    shoes_id: Mapped[uuid.UUID | None] = _garment_slot()
+    accessory_id: Mapped[uuid.UUID | None] = _garment_slot()
+
+    explanation: Mapped[str] = mapped_column(Text)
+    dismissed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    worn_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    def garment_ids(self) -> dict[GarmentCategory, uuid.UUID | None]:
+        return {category: getattr(self, f"{category.value}_id") for category in GarmentCategory}
+
+    @property
+    def is_complete(self) -> bool:
+        has_base = bool(self.one_piece_id) or bool(self.top_id and self.bottom_id)
+        return has_base and bool(self.shoes_id)
