@@ -8,8 +8,6 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { selectionFeedback } from '@/lib/haptics';
-
 type TabButtonProps = Omit<PressableProps, 'style' | 'children' | 'onPress'> & {
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
@@ -27,7 +25,6 @@ export function TabButton({
 }: TabButtonProps) {
   const scale = useSharedValue(1);
   const press = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const selected = rest.accessibilityState?.selected ?? rest['aria-selected'];
 
   return (
     <Pressable
@@ -42,10 +39,7 @@ export function TabButton({
         scale.value = withTiming(1, { duration: 140 });
         onPressOut?.(event);
       }}
-      onPress={(event) => {
-        if (!selected) selectionFeedback();
-        onPress?.(event);
-      }}>
+      onPress={onPress}>
       <Animated.View style={[style, press]}>{children}</Animated.View>
     </Pressable>
   );
