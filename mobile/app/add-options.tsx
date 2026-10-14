@@ -37,7 +37,7 @@ const OPTIONS: Option[] = [
 export default function AddOptionsSheet() {
   const insets = useSafeAreaInsets();
   return (
-    <View className="gap-2 bg-background p-5" style={{ paddingBottom: insets.bottom + 16 }}>
+    <View className="gap-2 bg-popover p-5" style={{ paddingBottom: insets.bottom + 16 }}>
       {/* Material 3 drag handle; iOS draws its own grabber. */}
       {Platform.OS === 'android' && (
         <View className="-mt-2 mb-2 h-1 w-8 self-center rounded-full bg-muted-foreground/40" />

@@ -58,7 +58,7 @@ export default function ClosetFiltersSheet() {
   }
 
   return (
-    <View className="bg-background" style={{ paddingBottom: insets.bottom + 12 }}>
+    <View className="bg-popover" style={{ paddingBottom: insets.bottom + 12 }}>
       <ScrollView className="shrink" contentContainerClassName="gap-5 p-5 pb-3">
         {/* Material 3 drag handle; iOS draws its own grabber. */}
         {Platform.OS === 'android' && (

@@ -34,7 +34,7 @@ export function ChoiceChips<T extends string>({
             className={cn(
               'items-center rounded-full border py-2.5',
               layout === 'fill' ? 'flex-1' : 'px-4',
-              active ? 'border-primary bg-primary' : 'border-border bg-background'
+              active ? 'border-primary bg-primary' : 'border-border bg-transparent'
             )}>
             <Text
               className={cn(
