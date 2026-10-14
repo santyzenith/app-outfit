@@ -1,5 +1,13 @@
-import { Link, router } from 'expo-router';
-import { ArrowUpDownIcon, PlusIcon, SearchIcon, SlidersHorizontalIcon } from 'lucide-react-native';
+import { router } from 'expo-router';
+import {
+  ArrowUpDownIcon,
+  CameraIcon,
+  ImagesIcon,
+  ListChecksIcon,
+  PlusIcon,
+  SearchIcon,
+  SlidersHorizontalIcon,
+} from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -15,6 +23,7 @@ import { Button } from '@/components/app/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -34,6 +43,7 @@ import {
 } from '@/lib/closet-filters';
 import { type Garment, type GarmentCategory, useGarments } from '@/lib/garments';
 import { useSavedOutfits } from '@/lib/outfits';
+import { pickFromGallery } from '@/lib/upload-queue';
 
 // Tile widths that leave room for the gaps between columns.
 const TILE_WIDTH: Record<ClosetColumns, `${number}%`> = { 3: '32%', 4: '23.5%' };
@@ -75,6 +85,12 @@ const COMPARE: Record<Sort, (a: Garment, b: Garment) => number> = {
   // Forgotten clothes first: never worn, then the longest since last worn.
   least_worn: (a, b) => a.wear_count - b.wear_count || lastWorn(a) - lastWorn(b),
 };
+
+const ADD_OPTIONS = [
+  { label: 'Tomar fotos', icon: CameraIcon, run: () => router.push('/add') },
+  { label: 'Elegir de la galería', icon: ImagesIcon, run: () => void pickFromGallery() },
+  { label: 'Elegir básicos', icon: ListChecksIcon, run: () => router.push('/basics') },
+];
 
 function savedSummary(count: number): string {
   if (count === 0) return 'Tus combinaciones favoritas';
@@ -276,12 +292,25 @@ export default function ClosetScreen() {
           <Text className="font-sans-semibold">Crear outfit</Text>
         </Button>
       ) : (
-        <Link href="/add" asChild>
-          <Button size="lg" className="absolute bottom-6 right-4 rounded-full shadow-md">
-            <Icon as={PlusIcon} size={20} className="text-primary-foreground" />
-            <Text className="font-sans-semibold">Añadir prendas</Text>
-          </Button>
-        </Link>
+        <View className="absolute bottom-6 right-4">
+          {/* Three ways in, so nobody has to find the gallery or the basics inside the camera. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="lg" className="shadow-md">
+                <Icon as={PlusIcon} size={20} className="text-primary-foreground" />
+                <Text className="font-sans-semibold">Añadir prendas</Text>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="mb-2 w-60">
+              {ADD_OPTIONS.map((option) => (
+                <DropdownMenuItem key={option.label} className="h-12 gap-3" onPress={option.run}>
+                  <Icon as={option.icon} size={20} />
+                  <Text className="font-sans-medium">{option.label}</Text>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </View>
       )}
     </View>
   );

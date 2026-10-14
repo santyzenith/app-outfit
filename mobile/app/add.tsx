@@ -1,8 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { ImagesIcon, ListChecksIcon, XIcon } from 'lucide-react-native';
+import { ImagesIcon, XIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import Animated, {
@@ -17,7 +16,7 @@ import { Button } from '@/components/app/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { tapFeedback } from '@/lib/haptics';
-import { enqueuePhoto } from '@/lib/upload-queue';
+import { enqueuePhoto, pickFromGallery } from '@/lib/upload-queue';
 import { cn } from '@/lib/utils';
 
 function closeToCloset(): void {
@@ -55,14 +54,10 @@ export default function AddGarmentsScreen() {
     }
   }
 
-  async function pickFromGallery(): Promise<void> {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
-    if (result.canceled) return;
-    addPhotos(result.assets.map((asset) => asset.uri));
+  async function pickPhotos(): Promise<void> {
+    const uris = await pickFromGallery();
+    if (uris.length === 0) return;
+    setAdded((count) => count + uris.length);
     // Going straight to the closet shows the photos being analysed, so nobody picks them twice.
     closeToCloset();
   }
@@ -89,14 +84,6 @@ export default function AddGarmentsScreen() {
         {permission?.granted ? (
           <>
             <CameraView ref={camera} facing="back" style={{ flex: 1 }} />
-            <View className="absolute inset-x-0 top-4 items-center">
-              <Pressable
-                className="flex-row items-center gap-2 rounded-full bg-black/60 px-4 py-2.5 active:opacity-70"
-                onPress={() => router.push('/basics')}>
-                <Icon as={ListChecksIcon} size={16} className="text-white" />
-                <Text className="font-sans-medium text-sm text-white">Elegir básicos sin foto</Text>
-              </Pressable>
-            </View>
             <View pointerEvents="none" className="absolute inset-x-0 bottom-4 items-center px-6">
               <Text className="rounded-full bg-black/60 px-4 py-2 text-center text-sm text-white">
                 Extiende cada prenda sobre la cama o el piso, sin que una tape a otra.
@@ -134,7 +121,7 @@ export default function AddGarmentsScreen() {
           accessibilityLabel="Elegir de la galería"
           hitSlop={12}
           className="w-16 items-center"
-          onPress={() => void pickFromGallery()}>
+          onPress={() => void pickPhotos()}>
           <Icon as={ImagesIcon} size={28} className="text-white" />
         </Pressable>
 

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -89,6 +90,19 @@ export async function enqueuePhoto(uri: string): Promise<void> {
   };
   useUploadQueue.setState(({ photos }) => ({ photos: [...photos, photo] }));
   pump();
+}
+
+// Returns the picked photos, already queued for upload; empty if the user cancelled.
+export async function pickFromGallery(): Promise<string[]> {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsMultipleSelection: true,
+    quality: 1,
+  });
+  if (result.canceled) return [];
+  const uris = result.assets.map((asset) => asset.uri);
+  uris.forEach((uri) => void enqueuePhoto(uri));
+  return uris;
 }
 
 export function retryFailedUploads(): void {
