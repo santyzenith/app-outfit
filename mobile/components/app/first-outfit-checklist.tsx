@@ -74,7 +74,7 @@ export function FirstOutfitChecklist() {
         <Text className="font-serif-medium text-3xl leading-tight">Armemos tu primer outfit</Text>
         <Text className="text-muted-foreground">
           Fotografía estas prendas y te decimos qué ponerte cada mañana. Puedes poner varias en una
-          foto o tomarte una frente al espejo.
+          misma foto.
         </Text>
       </Animated.View>
 
