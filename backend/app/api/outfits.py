@@ -10,6 +10,7 @@ from app.auth.deps import CurrentUser, DbSession
 from app.garments import service as garment_service
 from app.models import Garment, Occasion, Outfit
 from app.outfits import service
+from app.outfits.candidates import FORMALITY_BY_OCCASION
 from app.outfits.weather import Forecast, get_forecast
 
 router = APIRouter(prefix="/outfits", tags=["outfits"])
@@ -28,9 +29,13 @@ def _forecast(day: dt.date, lat: float | None, lon: float | None) -> Forecast | 
 
 def _outfit_out(db: Session, outfit: Outfit, forecast: Forecast | None) -> OutfitOut:
     garments = {}
+    off_occasion = []
+    fitting = FORMALITY_BY_OCCASION[outfit.occasion]
     for category, garment_id in outfit.garment_ids().items():
         garment = db.get(Garment, garment_id) if garment_id else None
         garments[category.value] = GarmentOut.model_validate(garment) if garment else None
+        if garment is not None and garment.formality not in fitting:
+            off_occasion.append(category.value)
     return OutfitOut(
         id=outfit.id,
         day=outfit.day,
@@ -38,6 +43,7 @@ def _outfit_out(db: Session, outfit: Outfit, forecast: Forecast | None) -> Outfi
         explanation=outfit.explanation,
         worn=outfit.worn_at is not None,
         garments=garments,
+        off_occasion=off_occasion,
         forecast=ForecastOut.model_validate(forecast) if forecast else None,
     )
 

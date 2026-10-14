@@ -366,3 +366,11 @@ def test_building_around_someone_elses_garment_is_not_found(client, user, closet
     stranger = auth_header(client.post("/v1/auth/guest").json())
 
     assert around(client, stranger, closet[0].id).status_code == 404
+
+
+def test_today_flags_what_the_closet_could_not_match_to_the_occasion(client, user, closet, stylist):
+    casual = client.get(f"/v1/outfits/today?day={TODAY}&occasion=casual", headers=user).json()
+    formal = client.get(f"/v1/outfits/today?day={TODAY}&occasion=formal", headers=user).json()
+
+    assert casual["off_occasion"] == []
+    assert sorted(formal["off_occasion"]) == ["bottom", "shoes", "top"]

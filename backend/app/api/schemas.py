@@ -70,4 +70,6 @@ class OutfitOut(BaseModel):
     worn: bool
     # One entry per garment category; empty slots are null.
     garments: dict[str, GarmentOut | None]
+    # Categories the closet could only fill with something off the occasion.
+    off_occasion: list[str]
     forecast: ForecastOut | None

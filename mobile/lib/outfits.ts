@@ -15,6 +15,8 @@ export type Outfit = {
   explanation: string;
   worn: boolean;
   garments: Record<GarmentCategory, Garment | null>;
+  // Slots the closet could only fill with something off the occasion.
+  off_occasion: GarmentCategory[];
   forecast: { min_c: number; max_c: number; rain: boolean } | null;
 };
 

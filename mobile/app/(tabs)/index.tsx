@@ -31,6 +31,24 @@ const MISSING_TEXT: Partial<Record<GarmentCategory, string>> = {
   shoes: 'un par de zapatos',
 };
 
+const SLOT_TEXT: Record<GarmentCategory, string> = {
+  top: 'parte de arriba',
+  bottom: 'parte de abajo',
+  one_piece: 'pieza entera',
+  outerwear: 'capa',
+  shoes: 'zapatos',
+  accessory: 'accesorio',
+};
+
+function offOccasionNote(outfit: Outfit): string | null {
+  if (!outfit.off_occasion?.length) return null;
+  const slots = outfit.off_occasion.map((category) => SLOT_TEXT[category]);
+  const list =
+    slots.length === 1 ? slots[0] : `${slots.slice(0, -1).join(', ')} ni ${slots.at(-1)}`;
+  const occasion = OCCASIONS.find((option) => option.value === outfit.occasion)?.label;
+  return `Aún no tienes ${list} para «${occasion}», así que usamos lo más cercano.`;
+}
+
 function todayLabel(): string {
   const label = new Date().toLocaleDateString('es', {
     weekday: 'long',
@@ -116,6 +134,11 @@ export default function TodayScreen() {
                 {outfit.explanation}
               </Text>
             </OutfitTransition>
+            {offOccasionNote(outfit) && (
+              <Text className="text-center text-sm text-muted-foreground">
+                {offOccasionNote(outfit)}
+              </Text>
+            )}
             {noMoreOutfits && (
               <Text className="text-center text-sm text-muted-foreground">
                 No hay más combinaciones por hoy con tu armario.
