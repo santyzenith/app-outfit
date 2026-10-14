@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { GarmentSkeleton } from '@/components/app/skeletons';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import {

@@ -3,7 +3,7 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Text } from '@/components/ui/text';
 import { clearClosetFilters, colorFamily, useClosetFilters } from '@/lib/closet-filters';
 import { FORMALITY_OPTIONS, useGarments, WARMTH_OPTIONS } from '@/lib/garments';

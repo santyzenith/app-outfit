@@ -15,7 +15,7 @@ import { OutfitCollage } from '@/components/app/outfit-collage';
 import { Pulse } from '@/components/app/pulse';
 import { ScreenHeader } from '@/components/app/screen-header';
 import { Spinner } from '@/components/app/spinner';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { type Garment, useGarmentImage } from '@/lib/garments';

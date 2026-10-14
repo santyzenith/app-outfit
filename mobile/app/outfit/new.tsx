@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { OutfitCollage } from '@/components/app/outfit-collage';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Text } from '@/components/ui/text';
 import { type Garment, type GarmentCategory, useGarmentImage, useGarments } from '@/lib/garments';
 import {

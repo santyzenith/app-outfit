@@ -11,7 +11,7 @@ import { Pulse } from '@/components/app/pulse';
 import { SaveHeart } from '@/components/app/save-heart';
 import { Spinner } from '@/components/app/spinner';
 import { TodayHeader } from '@/components/app/today-header';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ApiError } from '@/lib/api';

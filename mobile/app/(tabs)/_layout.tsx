@@ -9,6 +9,8 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Material 3 fade-through between nav bar destinations.
+        animation: 'fade',
         tabBarButton: ({ ref: _ref, ...props }) => <TabButton {...props} />,
       }}>
       <Tabs.Screen

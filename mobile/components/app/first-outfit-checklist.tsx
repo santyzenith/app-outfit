@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 
 import { Spinner } from '@/components/app/spinner';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { type Garment, type GarmentCategory, useGarments } from '@/lib/garments';

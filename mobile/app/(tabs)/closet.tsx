@@ -11,7 +11,7 @@ import { Pulse } from '@/components/app/pulse';
 import { SavedOutfits } from '@/components/app/saved-outfits';
 import { Segmented } from '@/components/app/segmented';
 import { UploadBanner } from '@/components/app/upload-banner';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,7 +138,7 @@ export default function ClosetScreen() {
               </View>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-11 rounded-full">
+                  <Button variant="outline">
                     <Icon as={ArrowUpDownIcon} size={16} />
                     <Text className="font-sans-medium">
                       {SORTS.find((option) => option.value === sort)?.label}
@@ -178,7 +178,6 @@ export default function ClosetScreen() {
                   variant="outline"
                   size="icon"
                   accessibilityLabel="Filtros"
-                  className="h-11 w-11 rounded-full"
                   onPress={() => router.push('/closet-filters')}>
                   <Icon as={SlidersHorizontalIcon} size={18} />
                 </Button>

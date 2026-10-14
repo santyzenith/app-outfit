@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 
 import { Spinner } from '@/components/app/spinner';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Text } from '@/components/ui/text';
 import { discardFailedUploads, retryFailedUploads, useUploadQueue } from '@/lib/upload-queue';
 

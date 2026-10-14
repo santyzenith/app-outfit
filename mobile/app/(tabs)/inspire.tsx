@@ -5,7 +5,7 @@ import { FlatList, View } from 'react-native';
 import { LookCard } from '@/components/app/look-card';
 import { Pulse } from '@/components/app/pulse';
 import { ScreenHeader } from '@/components/app/screen-header';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useInspirations, useUploadLook } from '@/lib/inspirations';

@@ -4,7 +4,7 @@ import { Alert, ScrollView, View } from 'react-native';
 
 import { OutfitCollage } from '@/components/app/outfit-collage';
 import { LookSkeleton } from '@/components/app/skeletons';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/app/button';
 import { Text } from '@/components/ui/text';
 import { ApiError } from '@/lib/api';
 import {
