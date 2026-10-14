@@ -29,6 +29,7 @@ LAYER_BELOW_C = 17
 
 # Categories whose warmth has to match the day's temperature.
 WEATHER_SENSITIVE = {GarmentCategory.TOP, GarmentCategory.BOTTOM, GarmentCategory.ONE_PIECE}
+OPTIONAL = {GarmentCategory.OUTERWEAR, GarmentCategory.ACCESSORY}
 
 
 @dataclass(frozen=True)
@@ -68,9 +69,10 @@ def _suitable_warmth(forecast: Forecast | None) -> set[Warmth]:
 
 
 def _is_rested(garment: Garment, day: dt.date) -> bool:
-    if garment.last_worn_at is None:
+    rest_days = REST_DAYS[garment.category]
+    if garment.last_worn_at is None or rest_days == 0:
         return True
-    return (day - garment.last_worn_at.date()).days > REST_DAYS[garment.category]
+    return (day - garment.last_worn_at.date()).days > rest_days
 
 
 def _least_recently_worn(garments: list[Garment]) -> list[Garment]:
@@ -94,19 +96,22 @@ def select_candidates(
     def rested(garment: Garment) -> bool:
         return _is_rested(garment, day)
 
-    # When a small closet leaves a slot empty, rules are dropped in this order.
+    # When a small closet leaves a slot empty, rules are dropped in this order; the occasion last.
     relaxations = [
         (fits_weather, rested, fits_occasion),
-        (fits_weather, rested),
+        (fits_weather, fits_occasion),
+        (fits_occasion,),
         (fits_weather,),
         (),
     ]
+    # An optional piece that breaks the occasion is worse than no piece at all.
+    optional_relaxations = [rules for rules in relaxations if fits_occasion in rules]
 
     by_category: dict[GarmentCategory, list[Garment]] = {}
     for category in GarmentCategory:
         in_category = [garment for garment in garments if garment.category == category]
         chosen: list[Garment] = []
-        for rules in relaxations:
+        for rules in optional_relaxations if category in OPTIONAL else relaxations:
             chosen = [g for g in in_category if all(rule(g) for rule in rules)]
             if chosen:
                 break

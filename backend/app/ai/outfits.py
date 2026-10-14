@@ -37,7 +37,7 @@ Rules:
 addressing the person as "tú", saying why the outfit works today. Talk about the outfit, never \
 describe the person: no adjectives or participles about them such as "cómodo", "protegida" or \
 "abrigado"; use verbs instead ("te protege de la lluvia", "te mantiene a gusto"). No emojis, no \
-garment refs."""
+garment refs. Mention only garments that are in that outfit."""
 
 _SLOT_SCHEMA = {"type": ["string", "null"]}
 SCHEMA = {
@@ -85,6 +85,14 @@ def _describe_garment(ref: str, garment: Garment) -> dict[str, str | None]:
     }
 
 
+def _outerwear_rule(candidates: Candidates) -> str:
+    if not candidates.by_category[GarmentCategory.OUTERWEAR]:
+        return "There is no outerwear available: leave it empty and do not mention any."
+    if candidates.wants_outerwear:
+        return "Add one outerwear piece: it will be cold or rainy."
+    return "Do not add outerwear unless the outfit clearly needs it."
+
+
 def sugerir_outfits(
     candidates: Candidates,
     occasion: Occasion,
@@ -105,11 +113,7 @@ def sugerir_outfits(
             [_describe_garment(ref, garment) for ref, garment in by_ref.items()],
             ensure_ascii=False,
         ),
-        outerwear_rule=(
-            "Add one outerwear piece: it will be cold or rainy."
-            if candidates.wants_outerwear
-            else "Do not add outerwear unless the outfit clearly needs it."
-        ),
+        outerwear_rule=_outerwear_rule(candidates),
         seen=json.dumps([sorted(ref_of[i] for i in combo if i in ref_of) for combo in seen]),
     )
     data = openrouter.chat_json(get_settings().outfit_model, prompt, SCHEMA)

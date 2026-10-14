@@ -83,7 +83,7 @@ def test_occasion_filters_by_formality():
     assert candidates.by_category[GarmentCategory.TOP] == [formal]
 
 
-def test_a_small_closet_relaxes_formality_before_anything_else():
+def test_a_closet_without_the_right_formality_still_gets_an_outfit():
     only_casual = garment(GarmentCategory.TOP, formality=Formality.CASUAL)
 
     candidates = select_candidates([only_casual], Occasion.FORMAL, MILD, TODAY)
@@ -91,13 +91,36 @@ def test_a_small_closet_relaxes_formality_before_anything_else():
     assert candidates.by_category[GarmentCategory.TOP] == [only_casual]
 
 
-def test_weather_is_the_last_rule_to_be_relaxed():
+def test_weather_outranks_resting():
     worn_light = garment(GarmentCategory.TOP, Warmth.LIGHT, worn_days_ago=1)
     rested_warm = garment(GarmentCategory.TOP, Warmth.WARM)
 
     candidates = select_candidates([worn_light, rested_warm], Occasion.CASUAL, HOT, TODAY)
 
     assert candidates.by_category[GarmentCategory.TOP] == [worn_light]
+
+
+def test_the_occasion_outranks_resting_and_weather():
+    worn_formal_shoes = garment(GarmentCategory.SHOES, formality=Formality.FORMAL, worn_days_ago=1)
+    sneakers = garment(GarmentCategory.SHOES)
+    warm_formal_top = garment(GarmentCategory.TOP, Warmth.WARM, Formality.FORMAL)
+    light_casual_top = garment(GarmentCategory.TOP, Warmth.LIGHT)
+    closet = [worn_formal_shoes, sneakers, warm_formal_top, light_casual_top]
+
+    candidates = select_candidates(closet, Occasion.FORMAL, HOT, TODAY)
+
+    assert candidates.by_category[GarmentCategory.SHOES] == [worn_formal_shoes]
+    assert candidates.by_category[GarmentCategory.TOP] == [warm_formal_top]
+
+
+def test_optional_pieces_never_break_the_occasion():
+    casual_jacket = garment(GarmentCategory.OUTERWEAR)
+    cap = garment(GarmentCategory.ACCESSORY)
+
+    candidates = select_candidates([casual_jacket, cap], Occasion.FORMAL, COLD, TODAY)
+
+    assert candidates.by_category[GarmentCategory.OUTERWEAR] == []
+    assert candidates.by_category[GarmentCategory.ACCESSORY] == []
 
 
 def test_the_closet_rotates_least_recently_worn_first():
