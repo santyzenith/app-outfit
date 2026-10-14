@@ -1,19 +1,51 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ChevronLeftIcon, ChevronRightIcon, Trash2Icon } from 'lucide-react-native';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  RefreshCwIcon,
+  SparklesIcon,
+  Trash2Icon,
+} from 'lucide-react-native';
 import * as React from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 
+import { ChoiceChips } from '@/components/app/choice-chips';
 import { OutfitCollage } from '@/components/app/outfit-collage';
+import { Pulse } from '@/components/app/pulse';
 import { ScreenHeader } from '@/components/app/screen-header';
+import { Spinner } from '@/components/app/spinner';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { type Garment, useGarmentImage } from '@/lib/garments';
-import { localDay, OCCASIONS, type Outfit, useCalendar, useDeleteOutfit } from '@/lib/outfits';
+import { useCoords } from '@/lib/location';
+import {
+  defaultOccasion,
+  garmentIds,
+  localDay,
+  OCCASIONS,
+  type Outfit,
+  useAnotherOutfit,
+  useCalendar,
+  useCreateOutfit,
+  useDayOutfit,
+  useDeleteOutfit,
+} from '@/lib/outfits';
 import { cn } from '@/lib/utils';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+// The forecast is reliable enough for about a week.
+const SUGGEST_DAYS_AHEAD = 7;
+
+function parseDay(day: string, hour = 0): Date {
+  const [year, month, date] = day.split('-').map(Number);
+  return new Date(year, month - 1, date, hour);
+}
+
+function daysBetween(from: string, to: string): number {
+  return Math.round((parseDay(to).getTime() - parseDay(from).getTime()) / 86_400_000);
+}
 
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -124,6 +156,67 @@ function DayOutfit({ outfit }: { outfit: Outfit }) {
   );
 }
 
+function DaySuggestion({ day }: { day: string }) {
+  const coords = useCoords();
+  const [asked, setAsked] = React.useState(false);
+  // Morning of that day, so a Friday gets "Trabajo" and a Saturday "Casual".
+  const [occasion, setOccasion] = React.useState(() => defaultOccasion(parseDay(day, 8)));
+  const suggestion = useDayOutfit(day, occasion, coords, asked);
+  const another = useAnotherOutfit(coords);
+  const plan = useCreateOutfit();
+  const outfit = suggestion.data;
+
+  if (!asked) {
+    return (
+      <Button onPress={() => setAsked(true)}>
+        <Icon as={SparklesIcon} size={16} className="text-primary-foreground" />
+        <Text className="font-sans-semibold">Sugerirme un outfit</Text>
+      </Button>
+    );
+  }
+
+  return (
+    <View className="gap-3">
+      <ChoiceChips options={OCCASIONS} selected={occasion} onSelect={setOccasion} />
+      {outfit ? (
+        <>
+          <View className="h-64" style={{ opacity: another.isPending ? 0.4 : 1 }}>
+            <OutfitCollage garments={outfit.garments} />
+          </View>
+          <Text className="text-center font-serif-italic leading-6">{outfit.explanation}</Text>
+          <View className="flex-row gap-2">
+            <Button
+              variant="outline"
+              disabled={another.isPending || plan.isPending}
+              onPress={() => another.mutate(outfit)}>
+              {another.isPending ? <Spinner size="small" /> : <Icon as={RefreshCwIcon} size={16} />}
+              <Text className="font-sans-semibold">Otra</Text>
+            </Button>
+            <Button
+              className="flex-1"
+              disabled={another.isPending || plan.isPending}
+              onPress={() =>
+                plan.mutate({ day, occasion, worn: false, garments: garmentIds(outfit.garments) })
+              }>
+              <Text className="font-sans-semibold">
+                {plan.isPending ? 'Guardando…' : 'Planearlo'}
+              </Text>
+            </Button>
+          </View>
+        </>
+      ) : suggestion.isError ? (
+        <Text className="text-center text-muted-foreground">
+          No pudimos armar un outfit para ese día.
+        </Text>
+      ) : (
+        <Pulse>
+          <View className="h-64 rounded-3xl bg-muted" />
+        </Pulse>
+      )}
+    </View>
+  );
+}
+
 export default function CalendarScreen() {
   const today = localDay();
   const [month, setMonth] = React.useState(() => {
@@ -141,9 +234,8 @@ export default function CalendarScreen() {
   for (const outfit of outfits) byDay.set(outfit.day, [...(byDay.get(outfit.day) ?? []), outfit]);
   const dayOutfits = byDay.get(selectedDay) ?? [];
 
-  const [year, monthIndex, date] = selectedDay.split('-').map(Number);
   const selectedLabel = capitalize(
-    new Date(year, monthIndex - 1, date).toLocaleDateString('es', {
+    parseDay(selectedDay).toLocaleDateString('es', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -213,6 +305,11 @@ export default function CalendarScreen() {
           {dayOutfits.map((outfit) => (
             <DayOutfit key={outfit.id} outfit={outfit} />
           ))}
+          {selectedDay > today &&
+            daysBetween(today, selectedDay) <= SUGGEST_DAYS_AHEAD &&
+            !dayOutfits.some((outfit) => outfit.planned) && (
+              <DaySuggestion key={selectedDay} day={selectedDay} />
+            )}
           <View className="gap-2">
             {selectedDay <= today && (
               <Button variant="outline" onPress={() => openBuilder('wear')}>
@@ -221,7 +318,9 @@ export default function CalendarScreen() {
             )}
             {selectedDay >= today && (
               <Button variant="outline" onPress={() => openBuilder('plan')}>
-                <Text className="font-sans-semibold">Planear un outfit</Text>
+                <Text className="font-sans-semibold">
+                  {selectedDay > today ? 'Prefiero armarlo yo' : 'Planear un outfit'}
+                </Text>
               </Button>
             )}
           </View>

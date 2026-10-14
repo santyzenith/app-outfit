@@ -62,21 +62,31 @@ export function coordsQuery(coords: Coords | null | undefined): string {
 
 const CALENDAR_KEY = ['outfit-calendar'];
 
-export function todayKey(occasion: Occasion) {
-  return ['outfit', localDay(), occasion];
+export function todayKey(occasion: Occasion, day = localDay()) {
+  return ['outfit', day, occasion];
+}
+
+// The suggestion for any day: today on Hoy, or a coming day from the calendar.
+export function useDayOutfit(
+  day: string,
+  occasion: Occasion,
+  coords: Coords | null | undefined,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: todayKey(occasion, day),
+    queryFn: () =>
+      api<Outfit>(
+        `/outfits/today?day=${day}&occasion=${occasion}&tz=${utcOffsetMinutes()}${coordsQuery(coords)}`
+      ),
+    // Wait for the location so the outfit already matches that day's weather.
+    enabled: enabled && coords !== undefined,
+    retry: false,
+  });
 }
 
 export function useTodayOutfit(occasion: Occasion, coords: Coords | null | undefined) {
-  return useQuery({
-    queryKey: todayKey(occasion),
-    queryFn: () =>
-      api<Outfit>(
-        `/outfits/today?day=${localDay()}&occasion=${occasion}&tz=${utcOffsetMinutes()}${coordsQuery(coords)}`
-      ),
-    // Wait for the location so the first outfit of the day already matches the weather.
-    enabled: coords !== undefined,
-    retry: false,
-  });
+  return useDayOutfit(localDay(), occasion, coords);
 }
 
 // Kept outside the component so its identity never changes between renders.
@@ -93,7 +103,7 @@ export function useAnotherOutfit(coords: Coords | null | undefined) {
       api<Outfit>(`/outfits/${outfit.id}/another?${coordsQuery(coords).slice(1)}`, {
         method: 'POST',
       }),
-    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion), outfit),
+    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion, outfit.day), outfit),
   });
 }
 
@@ -104,7 +114,7 @@ export function useBuildAroundGarment(coords: Coords | null | undefined) {
       const query = `day=${localDay()}&occasion=${occasion}${coordsQuery(coords)}`;
       return api<Outfit>(`/outfits/around/${garmentId}?${query}`, { method: 'POST' });
     },
-    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion), outfit),
+    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion, outfit.day), outfit),
   });
 }
 
@@ -113,7 +123,7 @@ export function useWearOutfit(coords: Coords | null | undefined) {
     mutationFn: (outfit: Outfit) =>
       api<Outfit>(`/outfits/${outfit.id}/wear?${coordsQuery(coords).slice(1)}`, { method: 'POST' }),
     onSuccess: (outfit) => {
-      queryClient.setQueryData(todayKey(outfit.occasion), outfit);
+      queryClient.setQueryData(todayKey(outfit.occasion, outfit.day), outfit);
       void refreshGarments();
       void queryClient.invalidateQueries({ queryKey: CALENDAR_KEY });
     },
@@ -201,6 +211,6 @@ export function useWearSavedToday(coords: Coords | null | undefined) {
       const query = `day=${localDay()}&occasion=${occasion}${coordsQuery(coords)}`;
       return api<Outfit>(`/saved-outfits/${id}/use?${query}`, { method: 'POST' });
     },
-    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion), outfit),
+    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion, outfit.day), outfit),
   });
 }

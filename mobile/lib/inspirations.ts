@@ -74,6 +74,6 @@ export function useWearLookToday(coords: Coords | null | undefined) {
       const query = `day=${localDay()}&occasion=${occasion}${coordsQuery(coords)}`;
       return api<Outfit>(`/inspirations/${id}/use?${query}`, { method: 'POST' });
     },
-    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion), outfit),
+    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion, outfit.day), outfit),
   });
 }
