@@ -69,6 +69,13 @@ ONE_OF_MANY_PROMPT = (
     "add, remove or redesign anything. If the item is footwear, show the pair side by side."
 )
 
+BASIC_PROMPT = (
+    "A clean e-commerce catalog photo of {item}. The item alone, front view, neatly laid flat and "
+    "unwrinkled, evenly lit, centered, on a plain pure white background, with no shadow under or "
+    "around it. Plain and unbranded: no logos, prints or text. No hanger, no person, no props. "
+    "If the item is footwear, show the pair side by side."
+)
+
 
 @dataclass(frozen=True)
 class GarmentAnalysis:
@@ -104,3 +111,10 @@ def analizar_prenda(photo: bytes) -> list[GarmentAnalysis]:
 def recrear_prenda(photo: bytes, focus: str | None = None) -> bytes:
     prompt = ONE_OF_MANY_PROMPT.format(item=focus) if focus else RECREATE_PROMPT
     return openrouter.generate_image(get_settings().image_model, prompt, photo)
+
+
+def crear_basico(description: str) -> bytes:
+    # Text only: basics are generic items, so there is no user photo to follow.
+    return openrouter.generate_image(
+        get_settings().image_model, BASIC_PROMPT.format(item=description)
+    )

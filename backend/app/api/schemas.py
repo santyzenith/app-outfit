@@ -53,9 +53,21 @@ class GarmentOut(BaseModel):
     size: str | None
     notes: str | None
     image_version: str | None
+    basic_key: str | None
     wear_count: int
     last_worn_at: datetime | None
     created_at: datetime
+
+
+class BasicOut(BaseModel):
+    key: str
+    name: str
+    category: GarmentCategory
+    owned: bool
+
+
+class BasicsIn(BaseModel):
+    keys: list[str] = Field(min_length=1, max_length=40)
 
 
 class GarmentUpdate(BaseModel):

@@ -2,7 +2,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { ImagesIcon, XIcon } from 'lucide-react-native';
+import { ImagesIcon, ListChecksIcon, XIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import Animated, {
@@ -89,6 +89,14 @@ export default function AddGarmentsScreen() {
         {permission?.granted ? (
           <>
             <CameraView ref={camera} facing="back" style={{ flex: 1 }} />
+            <View className="absolute inset-x-0 top-4 items-center">
+              <Pressable
+                className="flex-row items-center gap-2 rounded-full bg-black/60 px-4 py-2.5 active:opacity-70"
+                onPress={() => router.push('/basics')}>
+                <Icon as={ListChecksIcon} size={16} className="text-white" />
+                <Text className="font-sans-medium text-sm text-white">Elegir básicos sin foto</Text>
+              </Pressable>
+            </View>
             <View pointerEvents="none" className="absolute inset-x-0 bottom-4 items-center px-6">
               <Text className="rounded-full bg-black/60 px-4 py-2 text-center text-sm text-white">
                 Extiende cada prenda sobre la cama o el piso, sin que una tape a otra.

@@ -22,6 +22,8 @@ export type Garment = {
   size: string | null;
   notes: string | null;
   image_version: string | null;
+  // Picked from the basics list, so there is no photo of the user's own.
+  basic_key: string | null;
   wear_count: number;
   last_worn_at: string | null;
   created_at: string;

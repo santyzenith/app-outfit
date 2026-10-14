@@ -119,7 +119,6 @@ def delete(db: Session, storage: Storage, garment: Garment) -> None:
 def thumbnail(storage: Storage, image_path: str) -> str:
     # Made the first time it is asked for, then served from disk.
     path = thumbnail_path(image_path)
-    if not storage.path(path).exists():
-        user_folder, filename = path.split("/", 1)
-        storage.save(uuid.UUID(user_folder), filename, make_thumbnail(storage.read(image_path)))
+    if not storage.exists(path):
+        storage.save_shared(path, make_thumbnail(storage.read(image_path)))
     return path

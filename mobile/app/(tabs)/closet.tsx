@@ -252,6 +252,14 @@ export default function ClosetScreen() {
                         ? 'Prueba con otra búsqueda, otro tipo o quita los filtros.'
                         : 'Fotografía tu ropa y la ordenamos por ti. Con una parte de arriba, una de abajo y unos zapatos ya tienes tu primer outfit.'}
                   </Text>
+                  {!isError && garments.length === 0 && (
+                    <Button
+                      variant="outline"
+                      className="mt-2"
+                      onPress={() => router.push('/basics')}>
+                      <Text className="font-sans-semibold">Elegir básicos de una lista</Text>
+                    </Button>
+                  )}
                 </View>
               }
             />

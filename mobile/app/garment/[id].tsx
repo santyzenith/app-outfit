@@ -95,11 +95,14 @@ function GarmentForm({ garment }: { garment: Garment }) {
         <Image source={image} contentFit="contain" style={{ flex: 1 }} transition={150} />
       </View>
       <Text className="text-center text-sm text-muted-foreground">{wearSummary(garment)}</Text>
-      <Button variant="ghost" size="sm" onPress={() => setShowOriginal((value) => !value)}>
-        <Text className="font-sans-semibold">
-          {showOriginal ? 'Ver imagen del armario' : 'Ver mi foto original'}
-        </Text>
-      </Button>
+      {/* A basic was never photographed, so there is no original to show. */}
+      {!garment.basic_key && (
+        <Button variant="ghost" size="sm" onPress={() => setShowOriginal((value) => !value)}>
+          <Text className="font-sans-semibold">
+            {showOriginal ? 'Ver imagen del armario' : 'Ver mi foto original'}
+          </Text>
+        </Button>
+      )}
 
       <Field label="Nombre">
         <Input

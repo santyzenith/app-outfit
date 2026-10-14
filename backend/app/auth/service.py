@@ -46,8 +46,12 @@ def _merge_guest(db: Session, guest: User, account: User) -> None:
     storage = get_storage()
     for garment in db.scalars(select(Garment).where(Garment.user_id == guest.id)):
         garment.user_id = account.id
+        shared_file = garment.image_path == garment.original_path
         garment.original_path = storage.move(garment.original_path, account.id)
-        if garment.image_path:
+        # Basics use one file for both paths, so it is moved only once.
+        if shared_file:
+            garment.image_path = garment.original_path
+        elif garment.image_path:
             garment.image_path = storage.move(garment.image_path, account.id)
     for inspiration in db.scalars(select(Inspiration).where(Inspiration.user_id == guest.id)):
         inspiration.user_id = account.id

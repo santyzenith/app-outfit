@@ -19,6 +19,16 @@ class Storage:
         target.write_bytes(data)
         return relative_path
 
+    def save_shared(self, relative_path: str, data: bytes) -> str:
+        # Files that belong to no user, such as the images of the basics catalog.
+        target = self.path(relative_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+        return relative_path
+
+    def exists(self, relative_path: str) -> bool:
+        return self.path(relative_path).is_file()
+
     def read(self, relative_path: str) -> bytes:
         return self.path(relative_path).read_bytes()
 

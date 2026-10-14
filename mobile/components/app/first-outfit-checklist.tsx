@@ -101,6 +101,11 @@ export function FirstOutfitChecklist() {
           </Text>
         </Button>
       </Link>
+      <Link href="/basics" asChild>
+        <Button variant="ghost">
+          <Text className="font-sans-semibold">O elige básicos de una lista, sin fotos</Text>
+        </Button>
+      </Link>
     </View>
   );
 }

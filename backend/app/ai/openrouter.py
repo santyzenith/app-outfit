@@ -55,19 +55,13 @@ def chat_json(
         raise AIError(f"unexpected chat response: {str(body)[:300]}") from exc
 
 
-def generate_image(model: str, prompt: str, reference: bytes) -> bytes:
-    body = _post(
-        "/images",
-        {
-            "model": model,
-            "prompt": prompt,
-            "input_references": [
-                {"type": "image_url", "image_url": {"url": image_data_url(reference)}}
-            ],
-            "aspect_ratio": "1:1",
-            "n": 1,
-        },
-    )
+def generate_image(model: str, prompt: str, reference: bytes | None = None) -> bytes:
+    payload: dict[str, Any] = {"model": model, "prompt": prompt, "aspect_ratio": "1:1", "n": 1}
+    if reference is not None:
+        payload["input_references"] = [
+            {"type": "image_url", "image_url": {"url": image_data_url(reference)}}
+        ]
+    body = _post("/images", payload)
     try:
         return base64.b64decode(body["data"][0]["b64_json"])
     except (KeyError, IndexError, TypeError, ValueError) as exc:
