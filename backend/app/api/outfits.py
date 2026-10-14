@@ -36,6 +36,7 @@ def _outfit_out(db: Session, outfit: Outfit, forecast: Forecast | None) -> Outfi
         garments[category.value] = GarmentOut.model_validate(garment) if garment else None
         if garment is not None and garment.formality not in fitting:
             off_occasion.append(category.value)
+    saved = service.find_saved(db, outfit.user_id, outfit.garment_ids())
     return OutfitOut(
         id=outfit.id,
         day=outfit.day,
@@ -43,6 +44,7 @@ def _outfit_out(db: Session, outfit: Outfit, forecast: Forecast | None) -> Outfi
         explanation=outfit.explanation,
         worn=outfit.worn_at is not None,
         planned=outfit.planned,
+        saved_id=saved.id if saved else None,
         garments=garments,
         off_occasion=off_occasion,
         forecast=ForecastOut.model_validate(forecast) if forecast else None,

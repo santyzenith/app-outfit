@@ -69,6 +69,7 @@ export default function RootLayout() {
             <Stack.Screen name="garment/[id]" options={{ title: 'Prenda' }} />
             <Stack.Screen name="look/[id]" options={{ title: 'Look' }} />
             <Stack.Screen name="outfit/new" options={{ title: 'Outfit' }} />
+            <Stack.Screen name="saved/[id]" options={{ title: 'Outfit guardado' }} />
           </Stack>
         </SessionGate>
         <PortalHost />

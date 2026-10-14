@@ -16,6 +16,8 @@ export type Outfit = {
   worn: boolean;
   // Chosen by the user ahead of time rather than suggested by the app.
   planned: boolean;
+  // The saved outfit with these same garments, if the user kept it.
+  saved_id: string | null;
   garments: Record<GarmentCategory, Garment | null>;
   // Slots the closet could only fill with something off the occasion.
   off_occasion: GarmentCategory[];
@@ -149,5 +151,56 @@ export function useDeleteOutfit() {
   return useMutation({
     mutationFn: (id: string) => api<void>(`/outfits/${id}`, { method: 'DELETE' }),
     onSuccess: refreshAfterOutfitChange,
+  });
+}
+
+export type SavedOutfit = {
+  id: string;
+  garments: Record<GarmentCategory, Garment | null>;
+  created_at: string;
+};
+
+const SAVED_KEY = ['saved-outfits'];
+
+export function garmentIds(garments: Outfit['garments']): Record<string, string | null> {
+  return Object.fromEntries(
+    Object.entries(garments).map(([category, garment]) => [category, garment?.id ?? null])
+  );
+}
+
+function refreshSaved(): void {
+  void queryClient.invalidateQueries({ queryKey: SAVED_KEY });
+  // Outfits on screen carry whether they are saved.
+  void queryClient.invalidateQueries({ queryKey: ['outfit'] });
+  void queryClient.invalidateQueries({ queryKey: CALENDAR_KEY });
+}
+
+export function useSavedOutfits() {
+  return useQuery({ queryKey: SAVED_KEY, queryFn: () => api<SavedOutfit[]>('/saved-outfits') });
+}
+
+export function useSaveOutfit() {
+  return useMutation({
+    mutationFn: (garments: Outfit['garments']) =>
+      api<SavedOutfit>('/saved-outfits', jsonBody('POST', { garments: garmentIds(garments) })),
+    onSuccess: refreshSaved,
+  });
+}
+
+export function useUnsaveOutfit() {
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/saved-outfits/${id}`, { method: 'DELETE' }),
+    onSuccess: refreshSaved,
+  });
+}
+
+export function useWearSavedToday(coords: Coords | null | undefined) {
+  return useMutation({
+    mutationFn: (id: string) => {
+      const { occasion } = useOccasion.getState();
+      const query = `day=${localDay()}&occasion=${occasion}${coordsQuery(coords)}`;
+      return api<Outfit>(`/saved-outfits/${id}/use?${query}`, { method: 'POST' });
+    },
+    onSuccess: (outfit) => queryClient.setQueryData(todayKey(outfit.occasion), outfit),
   });
 }

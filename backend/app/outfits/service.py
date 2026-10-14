@@ -6,7 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.ai.openrouter import AIError
 from app.ai.outfits import OutfitChoice, sugerir_outfits
-from app.models import Garment, GarmentCategory, GarmentStatus, Occasion, Outfit, User
+from app.models import (
+    Garment,
+    GarmentCategory,
+    GarmentStatus,
+    Occasion,
+    Outfit,
+    SavedOutfit,
+    User,
+)
 from app.outfits.candidates import Candidates, select_candidates
 from app.outfits.weather import Forecast
 
@@ -14,6 +22,7 @@ from app.outfits.weather import Forecast
 BATCH_SIZE = 3
 FALLBACK_EXPLANATION = "Una combinación sencilla con prendas que no has usado últimamente."
 PLANNED_EXPLANATION = "El outfit que planeaste para hoy."
+SAVED_EXPLANATION = "Uno de tus outfits guardados."
 
 Combo = frozenset[uuid.UUID]
 
@@ -296,14 +305,9 @@ def wear(db: Session, outfit: Outfit) -> Outfit:
     return outfit
 
 
-def create_manual(
-    db: Session,
-    user: User,
-    day: dt.date,
-    occasion: Occasion,
-    garment_ids: dict[GarmentCategory, uuid.UUID | None],
-    worn: bool,
-) -> Outfit:
+def _check_wearable(
+    db: Session, user: User, garment_ids: dict[GarmentCategory, uuid.UUID | None]
+) -> None:
     for category, garment_id in garment_ids.items():
         if garment_id is None:
             continue
@@ -317,6 +321,17 @@ def create_manual(
             raise InvalidOutfitError
     if not _is_wearable(OutfitChoice(garment_ids, "")):
         raise InvalidOutfitError
+
+
+def create_manual(
+    db: Session,
+    user: User,
+    day: dt.date,
+    occasion: Occasion,
+    garment_ids: dict[GarmentCategory, uuid.UUID | None],
+    worn: bool,
+) -> Outfit:
+    _check_wearable(db, user, garment_ids)
 
     existing = _for_day(db, user, day, occasion)
     if not worn:
@@ -372,4 +387,51 @@ def delete(db: Session, outfit: Outfit) -> None:
     db.delete(outfit)
     if was_worn:
         _refresh_wear(db, garment_ids)
+    db.commit()
+
+
+def _saved_of(db: Session, user_id: uuid.UUID) -> list[SavedOutfit]:
+    return list(
+        db.scalars(
+            select(SavedOutfit)
+            .where(SavedOutfit.user_id == user_id)
+            .order_by(SavedOutfit.created_at.desc())
+        )
+    )
+
+
+def list_saved(db: Session, user: User) -> list[SavedOutfit]:
+    return _saved_of(db, user.id)
+
+
+def find_saved(
+    db: Session, user_id: uuid.UUID, garment_ids: dict[GarmentCategory, uuid.UUID | None]
+) -> SavedOutfit | None:
+    combo = _combo(garment_ids)
+    return next((s for s in _saved_of(db, user_id) if _combo(s.garment_ids()) == combo), None)
+
+
+def save(
+    db: Session, user: User, garment_ids: dict[GarmentCategory, uuid.UUID | None]
+) -> SavedOutfit:
+    _check_wearable(db, user, garment_ids)
+    # Saving the same combination twice keeps a single copy.
+    existing = find_saved(db, user.id, garment_ids)
+    if existing is not None:
+        return existing
+    saved = SavedOutfit(user_id=user.id, **{f"{c.value}_id": gid for c, gid in garment_ids.items()})
+    db.add(saved)
+    db.commit()
+    return saved
+
+
+def get_saved_for_user(db: Session, user: User, saved_id: uuid.UUID) -> SavedOutfit:
+    saved = db.get(SavedOutfit, saved_id)
+    if saved is None or saved.user_id != user.id:
+        raise OutfitNotFoundError
+    return saved
+
+
+def delete_saved(db: Session, saved: SavedOutfit) -> None:
+    db.delete(saved)
     db.commit()

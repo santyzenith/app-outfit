@@ -1,0 +1,51 @@
+import { router } from 'expo-router';
+import { FlatList, Pressable, View } from 'react-native';
+
+import { OutfitCollage } from '@/components/app/outfit-collage';
+import { Pulse } from '@/components/app/pulse';
+import { Text } from '@/components/ui/text';
+import { type SavedOutfit, useSavedOutfits } from '@/lib/outfits';
+
+function SavedCard({ saved }: { saved: SavedOutfit }) {
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/saved/[id]', params: { id: saved.id } })}
+      className="h-64 max-w-[49%] flex-1 overflow-hidden rounded-3xl border border-border active:opacity-80">
+      <OutfitCollage garments={saved.garments} />
+    </Pressable>
+  );
+}
+
+export function SavedOutfits() {
+  const { data: saved = [], isLoading, refetch, isRefetching } = useSavedOutfits();
+
+  if (isLoading) {
+    return (
+      <Pulse style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16 }}>
+        <View className="h-64 flex-1 rounded-3xl bg-muted" />
+        <View className="h-64 flex-1 rounded-3xl bg-muted" />
+      </Pulse>
+    );
+  }
+
+  return (
+    <FlatList
+      data={saved}
+      keyExtractor={(item) => item.id}
+      numColumns={2}
+      renderItem={({ item }) => <SavedCard saved={item} />}
+      columnWrapperClassName="gap-2"
+      contentContainerClassName="grow gap-2 px-4 pb-28 pt-1"
+      onRefresh={() => void refetch()}
+      refreshing={isRefetching}
+      ListEmptyComponent={
+        <View className="flex-1 items-center justify-center gap-2 px-8">
+          <Text className="text-center font-sans-semibold text-lg">Aún no guardas outfits</Text>
+          <Text className="text-center text-muted-foreground">
+            Toca el corazón en un outfit que te guste, o crea uno con tus prendas.
+          </Text>
+        </View>
+      }
+    />
+  );
+}

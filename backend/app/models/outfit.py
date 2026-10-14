@@ -55,3 +55,27 @@ class Outfit(Base):
     def is_complete(self) -> bool:
         has_base = bool(self.one_piece_id) or bool(self.top_id and self.bottom_id)
         return has_base and bool(self.shoes_id)
+
+
+class SavedOutfit(Base):
+    # A combination the user wants to keep, independent of any day.
+    __tablename__ = "saved_outfits"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    top_id: Mapped[uuid.UUID | None] = garment_slot()
+    bottom_id: Mapped[uuid.UUID | None] = garment_slot()
+    one_piece_id: Mapped[uuid.UUID | None] = garment_slot()
+    outerwear_id: Mapped[uuid.UUID | None] = garment_slot()
+    shoes_id: Mapped[uuid.UUID | None] = garment_slot()
+    accessory_id: Mapped[uuid.UUID | None] = garment_slot()
+
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    def garment_ids(self) -> dict[GarmentCategory, uuid.UUID | None]:
+        return {category: getattr(self, f"{category.value}_id") for category in GarmentCategory}

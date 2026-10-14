@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { ArrowUpDownIcon, PlusIcon, SearchIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
@@ -7,6 +7,8 @@ import { ChoiceChips } from '@/components/app/choice-chips';
 import { GarmentTile } from '@/components/app/garment-tile';
 import { ScreenHeader } from '@/components/app/screen-header';
 import { Pulse } from '@/components/app/pulse';
+import { SavedOutfits } from '@/components/app/saved-outfits';
+import { Segmented } from '@/components/app/segmented';
 import { UploadBanner } from '@/components/app/upload-banner';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +35,13 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'outerwear', label: 'Capas' },
   { value: 'shoes', label: 'Zapatos' },
   { value: 'accessory', label: 'Accesorios' },
+];
+
+type ClosetView = 'garments' | 'outfits';
+
+const VIEWS: { value: ClosetView; label: string }[] = [
+  { value: 'garments', label: 'Prendas' },
+  { value: 'outfits', label: 'Outfits' },
 ];
 
 type Sort = 'recent' | 'most_worn' | 'least_worn';
@@ -74,6 +83,7 @@ export default function ClosetScreen() {
   const [filter, setFilter] = React.useState<Filter>('all');
   const [sort, setSort] = React.useState<Sort>('recent');
   const [search, setSearch] = React.useState('');
+  const [view, setView] = React.useState<ClosetView>('garments');
 
   // Garments still being catalogued have no category yet, so they only show under "Todo".
   const visible = garments
@@ -85,101 +95,122 @@ export default function ClosetScreen() {
     <View className="flex-1 bg-background">
       <ScreenHeader title="Armario" eyebrow={closetSummary(garments.length)} />
       <UploadBanner />
+      <View className="px-4 pb-3">
+        <Segmented options={VIEWS} selected={view} onSelect={setView} />
+      </View>
 
-      {garments.length > 0 && (
-        <View className="flex-row items-center gap-2 px-4 pb-3">
-          <View className="flex-1 justify-center">
-            <Input
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Buscar prenda"
-              returnKeyType="search"
-              className="h-11 rounded-full pl-10 font-sans"
-            />
-            <View pointerEvents="none" className="absolute left-3.5">
-              <Icon as={SearchIcon} size={18} className="text-muted-foreground" />
-            </View>
-          </View>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-11 rounded-full">
-                <Icon as={ArrowUpDownIcon} size={16} />
-                <Text className="font-sans-medium">
-                  {SORTS.find((option) => option.value === sort)?.label}
-                </Text>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuRadioGroup value={sort} onValueChange={(next) => setSort(next as Sort)}>
-                {SORTS.map((option) => (
-                  <DropdownMenuRadioItem key={option.value} value={option.value}>
-                    <Text className="font-sans">{option.label}</Text>
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </View>
-      )}
-
-      {garments.length > 0 && (
-        // A horizontal ScrollView grows to fill the screen unless told not to.
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0 }}
-          contentContainerClassName="px-4 pb-3">
-          <ChoiceChips layout="wrap" options={FILTERS} selected={filter} onSelect={setFilter} />
-        </ScrollView>
-      )}
-
-      {isLoading ? (
-        <Pulse style={{ gap: 8, paddingHorizontal: 16, paddingTop: 4 }}>
-          {[0, 1, 2].map((row) => (
-            <View key={row} className="flex-row gap-2">
-              {[0, 1, 2].map((tile) => (
-                <View key={tile} className="aspect-square flex-1 rounded-xl bg-muted" />
-              ))}
-            </View>
-          ))}
-        </Pulse>
+      {view === 'outfits' ? (
+        <SavedOutfits />
       ) : (
-        <FlatList
-          data={visible}
-          keyExtractor={(garment) => garment.id}
-          numColumns={COLUMNS}
-          renderItem={({ item }) => <GarmentTile garment={item} />}
-          columnWrapperClassName="gap-2"
-          contentContainerClassName="grow gap-2 px-4 pb-28 pt-1"
-          onRefresh={() => void refetch()}
-          refreshing={isRefetching}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center gap-2 px-8">
-              <Text className="text-center font-sans-semibold text-lg">
-                {isError
-                  ? 'No pudimos cargar tu armario'
-                  : garments.length > 0
-                    ? 'No encontramos prendas así'
-                    : 'Tu armario está vacío'}
-              </Text>
-              <Text className="text-center text-muted-foreground">
-                {isError
-                  ? 'Desliza hacia abajo para intentarlo de nuevo.'
-                  : garments.length > 0
-                    ? 'Prueba con otra búsqueda o tipo de prenda.'
-                    : 'Fotografía tu ropa y la ordenamos por ti. Con una parte de arriba, una de abajo y unos zapatos ya tienes tu primer outfit.'}
-              </Text>
+        <>
+          {garments.length > 0 && (
+            <View className="flex-row items-center gap-2 px-4 pb-3">
+              <View className="flex-1 justify-center">
+                <Input
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Buscar prenda"
+                  returnKeyType="search"
+                  className="h-11 rounded-full pl-10 font-sans"
+                />
+                <View pointerEvents="none" className="absolute left-3.5">
+                  <Icon as={SearchIcon} size={18} className="text-muted-foreground" />
+                </View>
+              </View>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-11 rounded-full">
+                    <Icon as={ArrowUpDownIcon} size={16} />
+                    <Text className="font-sans-medium">
+                      {SORTS.find((option) => option.value === sort)?.label}
+                    </Text>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuRadioGroup
+                    value={sort}
+                    onValueChange={(next) => setSort(next as Sort)}>
+                    {SORTS.map((option) => (
+                      <DropdownMenuRadioItem key={option.value} value={option.value}>
+                        <Text className="font-sans">{option.label}</Text>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </View>
-          }
-        />
+          )}
+
+          {garments.length > 0 && (
+            // A horizontal ScrollView grows to fill the screen unless told not to.
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0 }}
+              contentContainerClassName="px-4 pb-3">
+              <ChoiceChips layout="wrap" options={FILTERS} selected={filter} onSelect={setFilter} />
+            </ScrollView>
+          )}
+
+          {isLoading ? (
+            <Pulse style={{ gap: 8, paddingHorizontal: 16, paddingTop: 4 }}>
+              {[0, 1, 2].map((row) => (
+                <View key={row} className="flex-row gap-2">
+                  {[0, 1, 2].map((tile) => (
+                    <View key={tile} className="aspect-square flex-1 rounded-xl bg-muted" />
+                  ))}
+                </View>
+              ))}
+            </Pulse>
+          ) : (
+            <FlatList
+              data={visible}
+              keyExtractor={(garment) => garment.id}
+              numColumns={COLUMNS}
+              renderItem={({ item }) => <GarmentTile garment={item} />}
+              columnWrapperClassName="gap-2"
+              contentContainerClassName="grow gap-2 px-4 pb-28 pt-1"
+              onRefresh={() => void refetch()}
+              refreshing={isRefetching}
+              ListEmptyComponent={
+                <View className="flex-1 items-center justify-center gap-2 px-8">
+                  <Text className="text-center font-sans-semibold text-lg">
+                    {isError
+                      ? 'No pudimos cargar tu armario'
+                      : garments.length > 0
+                        ? 'No encontramos prendas así'
+                        : 'Tu armario está vacío'}
+                  </Text>
+                  <Text className="text-center text-muted-foreground">
+                    {isError
+                      ? 'Desliza hacia abajo para intentarlo de nuevo.'
+                      : garments.length > 0
+                        ? 'Prueba con otra búsqueda o tipo de prenda.'
+                        : 'Fotografía tu ropa y la ordenamos por ti. Con una parte de arriba, una de abajo y unos zapatos ya tienes tu primer outfit.'}
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </>
       )}
 
-      <Link href="/add" asChild>
-        <Button size="lg" className="absolute bottom-6 right-4 rounded-full shadow-md">
+      {view === 'outfits' ? (
+        <Button
+          size="lg"
+          className="absolute bottom-6 right-4 rounded-full shadow-md"
+          onPress={() => router.push({ pathname: '/outfit/new', params: { mode: 'save' } })}>
           <Icon as={PlusIcon} size={20} className="text-primary-foreground" />
-          <Text className="font-sans-semibold">Añadir prendas</Text>
+          <Text className="font-sans-semibold">Crear outfit</Text>
         </Button>
-      </Link>
+      ) : (
+        <Link href="/add" asChild>
+          <Button size="lg" className="absolute bottom-6 right-4 rounded-full shadow-md">
+            <Icon as={PlusIcon} size={20} className="text-primary-foreground" />
+            <Text className="font-sans-semibold">Añadir prendas</Text>
+          </Button>
+        </Link>
+      )}
     </View>
   );
 }

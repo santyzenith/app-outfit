@@ -440,3 +440,44 @@ def test_deleting_a_logged_outfit_undoes_its_wear(client, user, closet):
     top = client.get(f"/v1/garments/{first['garments']['top']['id']}", headers=user).json()
     assert top["wear_count"] == 1
     assert top["last_worn_at"].startswith(str(TODAY - dt.timedelta(days=3)))
+
+
+def test_an_outfit_can_be_saved_once_and_shows_as_saved(client, user, closet, stylist):
+    outfit = today(client, user).json()
+    assert outfit["saved_id"] is None
+    garments = {slot: g["id"] if g else None for slot, g in outfit["garments"].items()}
+
+    first = client.post("/v1/saved-outfits", json={"garments": garments}, headers=user)
+    again = client.post("/v1/saved-outfits", json={"garments": garments}, headers=user)
+
+    assert first.status_code == 201
+    assert again.json()["id"] == first.json()["id"]
+    assert today(client, user).json()["saved_id"] == first.json()["id"]
+    assert len(client.get("/v1/saved-outfits", headers=user).json()) == 1
+
+
+def test_a_saved_outfit_can_be_worn_today_and_deleted(client, user, closet, stylist):
+    top, _, bottom, _, shoes = closet
+    garments = {"top": str(top.id), "bottom": str(bottom.id), "shoes": str(shoes.id)}
+    saved = client.post("/v1/saved-outfits", json={"garments": garments}, headers=user).json()
+
+    used = client.post(
+        f"/v1/saved-outfits/{saved['id']}/use?day={TODAY}&occasion=casual", headers=user
+    )
+
+    assert used.json()["garments"]["top"]["id"] == str(top.id)
+    assert today(client, user).json()["id"] == used.json()["id"]
+    url = f"/v1/saved-outfits/{saved['id']}"
+    stranger = auth_header(client.post("/v1/auth/guest").json())
+    assert client.delete(url, headers=stranger).status_code == 404
+    assert client.delete(url, headers=user).status_code == 204
+    assert client.get("/v1/saved-outfits", headers=user).json() == []
+
+
+def test_only_wearable_outfits_can_be_saved(client, user, closet):
+    top, _, bottom, _, _ = closet
+    garments = {"top": str(top.id), "bottom": str(bottom.id)}
+
+    response = client.post("/v1/saved-outfits", json={"garments": garments}, headers=user)
+
+    assert response.status_code == 422

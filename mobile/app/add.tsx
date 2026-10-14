@@ -89,7 +89,8 @@ export default function AddGarmentsScreen() {
             <CameraView ref={camera} facing="back" style={{ flex: 1 }} />
             <View pointerEvents="none" className="absolute inset-x-0 bottom-4 items-center px-6">
               <Text className="rounded-full bg-black/60 px-4 py-2 text-center text-sm text-white">
-                Extiende la ropa sobre un fondo liso. Si pones varias prendas, que no se tapen.
+                Extiende la ropa sin que se tape, o tómate una foto de cuerpo entero frente al
+                espejo.
               </Text>
             </View>
             <Animated.View

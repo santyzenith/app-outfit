@@ -7,6 +7,7 @@ import { ChoiceChips } from '@/components/app/choice-chips';
 import { OutfitCollage } from '@/components/app/outfit-collage';
 import { OutfitTransition } from '@/components/app/outfit-transition';
 import { Pulse } from '@/components/app/pulse';
+import { SaveHeart } from '@/components/app/save-heart';
 import { ScreenHeader } from '@/components/app/screen-header';
 import { Spinner } from '@/components/app/spinner';
 import { Button } from '@/components/ui/button';
@@ -128,7 +129,10 @@ export default function TodayScreen() {
         {outfit ? (
           <>
             <OutfitTransition outfitId={outfit.id} dimmed={another.isPending}>
-              <OutfitCollage garments={outfit.garments} />
+              <View className="flex-1">
+                <OutfitCollage garments={outfit.garments} />
+                <SaveHeart outfit={outfit} />
+              </View>
 
               <Text className="text-center font-serif-italic text-lg leading-6">
                 {outfit.explanation}

@@ -9,7 +9,14 @@ import { OutfitCollage } from '@/components/app/outfit-collage';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { type Garment, type GarmentCategory, useGarmentImage, useGarments } from '@/lib/garments';
-import { OCCASIONS, type Outfit, useCreateOutfit, useOccasion } from '@/lib/outfits';
+import {
+  garmentIds,
+  OCCASIONS,
+  type Outfit,
+  useCreateOutfit,
+  useOccasion,
+  useSaveOutfit,
+} from '@/lib/outfits';
 import { cn } from '@/lib/utils';
 
 const SLOTS: { category: GarmentCategory; label: string }[] = [
@@ -22,6 +29,20 @@ const SLOTS: { category: GarmentCategory; label: string }[] = [
 ];
 
 const TILE = 80;
+
+type Mode = 'wear' | 'plan' | 'save';
+
+const TITLES: Record<Mode, string> = {
+  wear: 'Lo que me puse',
+  plan: 'Planear outfit',
+  save: 'Nuevo outfit',
+};
+
+const ACTIONS: Record<Mode, string> = {
+  wear: 'Guardar en el calendario',
+  plan: 'Planear',
+  save: 'Guardar outfit',
+};
 
 type Selection = Outfit['garments'];
 
@@ -77,29 +98,31 @@ function Tile({
 }
 
 export default function NewOutfitScreen() {
-  const { day, mode } = useLocalSearchParams<{ day: string; mode: 'wear' | 'plan' }>();
+  const { day, mode } = useLocalSearchParams<{ day?: string; mode: Mode }>();
   const { data: garments = [] } = useGarments();
   const [selection, setSelection] = React.useState<Selection>(EMPTY);
   const [occasion, setOccasion] = React.useState(useOccasion.getState().occasion);
   const create = useCreateOutfit();
+  const keep = useSaveOutfit();
+  const pending = create.isPending || keep.isPending;
   const insets = useSafeAreaInsets();
 
   const ready = garments.filter((garment) => garment.status === 'ready');
   const hint = missingHint(selection);
 
   function save(): void {
-    const ids = Object.fromEntries(
-      Object.entries(selection).map(([category, garment]) => [category, garment?.id ?? null])
-    );
-    create.mutate(
-      { day, occasion, worn: mode === 'wear', garments: ids },
-      { onSuccess: () => router.back() }
-    );
+    const done = { onSuccess: () => router.back() };
+    if (mode === 'save' || !day) keep.mutate(selection, done);
+    else
+      create.mutate(
+        { day, occasion, worn: mode === 'wear', garments: garmentIds(selection) },
+        done
+      );
   }
 
   return (
     <View className="flex-1 bg-background">
-      <Stack.Screen options={{ title: mode === 'wear' ? 'Lo que me puse' : 'Planear outfit' }} />
+      <Stack.Screen options={{ title: TITLES[mode] }} />
       <View className="h-56 px-4 pt-4">
         {Object.values(selection).some(Boolean) ? (
           <OutfitCollage garments={selection} />
@@ -112,7 +135,10 @@ export default function NewOutfitScreen() {
         )}
       </View>
       <ScrollView contentContainerClassName="gap-5 p-4 pb-40">
-        <ChoiceChips options={OCCASIONS} selected={occasion} onSelect={setOccasion} />
+        {/* A saved outfit is not tied to an occasion. */}
+        {mode !== 'save' && (
+          <ChoiceChips options={OCCASIONS} selected={occasion} onSelect={setOccasion} />
+        )}
 
         {SLOTS.map(({ category, label }) => {
           const options = ready.filter((garment) => garment.category === category);
@@ -143,21 +169,15 @@ export default function NewOutfitScreen() {
       <View
         className="absolute inset-x-0 bottom-0 gap-2 border-t border-border bg-background px-4 pt-3"
         style={{ paddingBottom: insets.bottom + 12 }}>
-        {create.isError ? (
+        {create.isError || keep.isError ? (
           <Text className="text-center text-sm text-destructive">
             No pudimos guardarlo. Inténtalo de nuevo.
           </Text>
         ) : hint ? (
           <Text className="text-center text-sm text-muted-foreground">{hint}</Text>
         ) : null}
-        <Button size="lg" disabled={hint !== null || create.isPending} onPress={save}>
-          <Text className="font-sans-semibold">
-            {create.isPending
-              ? 'Guardando…'
-              : mode === 'wear'
-                ? 'Guardar en el calendario'
-                : 'Planear'}
-          </Text>
+        <Button size="lg" disabled={hint !== null || pending} onPress={save}>
+          <Text className="font-sans-semibold">{pending ? 'Guardando…' : ACTIONS[mode]}</Text>
         </Button>
       </View>
     </View>

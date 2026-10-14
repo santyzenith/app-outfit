@@ -78,6 +78,8 @@ class OutfitOut(BaseModel):
     explanation: str
     worn: bool
     planned: bool
+    # The saved outfit with these same garments, if the user kept it.
+    saved_id: uuid.UUID | None
     # One entry per garment category; empty slots are null.
     garments: dict[str, GarmentOut | None]
     # Categories the closet could only fill with something off the occasion.
@@ -107,3 +109,13 @@ class OutfitIn(BaseModel):
     # True logs it as worn; false plans it for that day.
     worn: bool
     garments: dict[GarmentCategory, uuid.UUID | None]
+
+
+class SavedOutfitIn(BaseModel):
+    garments: dict[GarmentCategory, uuid.UUID | None]
+
+
+class SavedOutfitOut(BaseModel):
+    id: uuid.UUID
+    garments: dict[str, GarmentOut | None]
+    created_at: datetime
