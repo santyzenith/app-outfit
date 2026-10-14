@@ -22,7 +22,6 @@ import {
   matchesFilters,
   matchesSearch,
   useClosetColumns,
-  SORT_OPTIONS,
   useClosetFilters,
 } from '@/lib/closet-filters';
 import { type Garment, type GarmentCategory, useGarments } from '@/lib/garments';
@@ -78,8 +77,9 @@ export default function ClosetScreen() {
   const [view, setView] = React.useState<ClosetView>('garments');
   const { data: saved = [] } = useSavedOutfits();
   const filters = useClosetFilters();
-  const filterCount = activeFilterCount(filters);
   const { columns, sort } = useClosetColumns();
+  // A non-default order counts too, so the badge warns that the closet isn't in its usual order.
+  const filterCount = activeFilterCount(filters) + (sort === 'recent' ? 0 : 1);
 
   // Garments still being catalogued have no category yet, so they only show under "Todo".
   const visible = garments
@@ -118,7 +118,7 @@ export default function ClosetScreen() {
                 </View>
               </View>
               <View>
-                {/* One control for order and filters, labelled with the current order. */}
+                {/* Named like the closet apps people know; sorting lives inside the same sheet. */}
                 <Button
                   variant="outline"
                   accessibilityLabel="Ordenar y filtrar"
@@ -129,9 +129,7 @@ export default function ClosetScreen() {
                     })
                   }>
                   <Icon as={SlidersHorizontalIcon} size={18} />
-                  <Text className="font-sans-medium">
-                    {SORT_OPTIONS.find((option) => option.value === sort)?.label}
-                  </Text>
+                  <Text className="font-sans-medium">Filtros</Text>
                 </Button>
                 {filterCount > 0 && (
                   <View
