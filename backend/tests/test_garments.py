@@ -411,3 +411,19 @@ def test_thumbnails_are_small_and_go_away_with_the_garment(client, db, user, fak
     assert len(list(user_folder.glob("*_thumb.jpg"))) == 2
     client.delete(f"/v1/garments/{garment['id']}", headers=user)
     assert list(user_folder.iterdir()) == []
+
+
+def test_optional_details_can_be_set_and_cleared(client, db, user, fake_ai):
+    garment = upload(client, user).json()
+    jobs.run_next_job(db)
+    url = f"/v1/garments/{garment['id']}"
+
+    filled = client.patch(
+        url, json={"brand": " Zara ", "size": "M", "notes": "Lavar a mano"}, headers=user
+    )
+    cleared = client.patch(url, json={"brand": ""}, headers=user)
+
+    assert filled.json()["brand"] == "Zara"
+    assert filled.json()["notes"] == "Lavar a mano"
+    assert cleared.json()["brand"] is None
+    assert cleared.json()["size"] == "M"

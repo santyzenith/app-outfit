@@ -75,7 +75,8 @@ function normalize(text: string): string {
 
 function matchesSearch(garment: Garment, search: string): boolean {
   if (!search) return true;
-  return normalize(`${garment.name ?? ''} ${garment.color ?? ''}`).includes(normalize(search));
+  const text = `${garment.name ?? ''} ${garment.color ?? ''} ${garment.brand ?? ''}`;
+  return normalize(text).includes(normalize(search));
 }
 
 function closetSummary(count: number): string {

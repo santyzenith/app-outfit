@@ -18,6 +18,9 @@ export type Garment = {
   color: string | null;
   warmth: 'light' | 'medium' | 'warm' | null;
   formality: 'casual' | 'smart' | 'formal' | null;
+  brand: string | null;
+  size: string | null;
+  notes: string | null;
   image_version: string | null;
   wear_count: number;
   last_worn_at: string | null;
@@ -29,6 +32,9 @@ export type GarmentEdit = {
   category: GarmentCategory | null;
   warmth: Garment['warmth'];
   formality: Garment['formality'];
+  brand: string;
+  size: string;
+  notes: string;
 };
 
 export const CATEGORY_OPTIONS = [

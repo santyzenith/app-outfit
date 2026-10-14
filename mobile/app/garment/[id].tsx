@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { GarmentSkeleton } from '@/components/app/skeletons';
@@ -53,13 +54,21 @@ function GarmentForm({ garment }: { garment: Garment }) {
     category: garment.category,
     warmth: garment.warmth,
     formality: garment.formality,
+    brand: garment.brand ?? '',
+    size: garment.size ?? '',
+    notes: garment.notes ?? '',
   });
+  const hasDetails = Boolean(garment.brand || garment.size || garment.notes);
+  const [showDetails, setShowDetails] = React.useState(hasDetails);
 
   const changed =
     form.name !== (garment.name ?? '') ||
     form.category !== garment.category ||
     form.warmth !== garment.warmth ||
-    form.formality !== garment.formality;
+    form.formality !== garment.formality ||
+    form.brand !== (garment.brand ?? '') ||
+    form.size !== (garment.size ?? '') ||
+    form.notes !== (garment.notes ?? '');
   const canSave = changed && form.name.trim().length > 0 && !update.isPending;
 
   function save(): void {
@@ -125,6 +134,49 @@ function GarmentForm({ garment }: { garment: Garment }) {
           onSelect={(formality) => setForm((current) => ({ ...current, formality }))}
         />
       </Field>
+
+      {showDetails ? (
+        <Animated.View entering={FadeInDown.duration(250)} className="gap-5">
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <Field label="Marca">
+                <Input
+                  value={form.brand}
+                  onChangeText={(brand) => setForm((current) => ({ ...current, brand }))}
+                  maxLength={60}
+                  className="font-sans"
+                />
+              </Field>
+            </View>
+            <View className="w-28">
+              <Field label="Talla">
+                <Input
+                  value={form.size}
+                  onChangeText={(size) => setForm((current) => ({ ...current, size }))}
+                  maxLength={20}
+                  autoCapitalize="characters"
+                  className="font-sans"
+                />
+              </Field>
+            </View>
+          </View>
+          <Field label="Notas">
+            <Input
+              value={form.notes}
+              onChangeText={(notes) => setForm((current) => ({ ...current, notes }))}
+              maxLength={500}
+              multiline
+              placeholder="Por ejemplo: lavar a mano"
+              className="h-20 py-2 font-sans"
+              style={{ textAlignVertical: 'top' }}
+            />
+          </Field>
+        </Animated.View>
+      ) : (
+        <Button variant="ghost" size="sm" onPress={() => setShowDetails(true)}>
+          <Text className="font-sans-semibold">Añadir marca, talla o notas</Text>
+        </Button>
+      )}
 
       {update.isError && (
         <Text className="text-center text-sm text-destructive">

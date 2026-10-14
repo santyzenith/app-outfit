@@ -54,6 +54,9 @@ def read_garment(garment: OwnedGarment) -> GarmentOut:
 @router.patch("/{garment_id}")
 def update_garment(garment: OwnedGarment, body: GarmentUpdate, db: DbSession) -> GarmentOut:
     changes = body.model_dump(exclude_none=True)
+    for detail in ("brand", "size", "notes"):
+        if detail in changes:
+            changes[detail] = changes[detail].strip() or None
     return GarmentOut.model_validate(service.update(db, garment, changes))
 
 

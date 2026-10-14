@@ -64,6 +64,10 @@ class Garment(Base):
     color: Mapped[str | None] = mapped_column(String(60))
     warmth: Mapped[Warmth | None] = mapped_column(text_enum(Warmth))
     formality: Mapped[Formality | None] = mapped_column(text_enum(Formality))
+    # Optional details only the user knows; never required to get an outfit.
+    brand: Mapped[str | None] = mapped_column(String(60))
+    size: Mapped[str | None] = mapped_column(String(20))
+    notes: Mapped[str | None] = mapped_column(String(500))
 
     # The user's photo is kept so the catalog image can be regenerated later.
     original_path: Mapped[str] = mapped_column(String(255))

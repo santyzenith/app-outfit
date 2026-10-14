@@ -49,6 +49,9 @@ class GarmentOut(BaseModel):
     color: str | None
     warmth: Warmth | None
     formality: Formality | None
+    brand: str | None
+    size: str | None
+    notes: str | None
     image_version: str | None
     wear_count: int
     last_worn_at: datetime | None
@@ -61,6 +64,10 @@ class GarmentUpdate(BaseModel):
     color: str | None = Field(default=None, min_length=1, max_length=60)
     warmth: Warmth | None = None
     formality: Formality | None = None
+    # An empty string clears the detail.
+    brand: str | None = Field(default=None, max_length=60)
+    size: str | None = Field(default=None, max_length=20)
+    notes: str | None = Field(default=None, max_length=500)
 
 
 class ForecastOut(BaseModel):
