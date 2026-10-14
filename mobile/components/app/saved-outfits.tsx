@@ -10,7 +10,7 @@ function SavedCard({ saved }: { saved: SavedOutfit }) {
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/saved/[id]', params: { id: saved.id } })}
-      className="h-64 max-w-[49%] flex-1 overflow-hidden rounded-3xl border border-border active:opacity-80">
+      className="aspect-[4/5] max-w-[49%] flex-1 overflow-hidden rounded-3xl border border-border active:opacity-80">
       <OutfitCollage garments={saved.garments} size="thumb" />
     </Pressable>
   );
@@ -22,8 +22,8 @@ export function SavedOutfits() {
   if (isLoading) {
     return (
       <Pulse style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16 }}>
-        <View className="h-64 flex-1 rounded-3xl bg-muted" />
-        <View className="h-64 flex-1 rounded-3xl bg-muted" />
+        <View className="aspect-[4/5] flex-1 rounded-3xl bg-muted" />
+        <View className="aspect-[4/5] flex-1 rounded-3xl bg-muted" />
       </Pulse>
     );
   }

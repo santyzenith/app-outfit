@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { type Garment, type ImageSize, useGarmentImage } from '@/lib/garments';
 import type { Outfit } from '@/lib/outfits';
+import { cn } from '@/lib/utils';
 
 // Pieces arrive one after another, like clothes laid on a bed.
 const STAGGER_MS = 70;
@@ -78,7 +79,11 @@ export function OutfitCollage({
   size?: ImageSize;
 }) {
   return (
-    <View className="flex-1 flex-row gap-1 rounded-3xl bg-white p-3">
+    <View
+      className={cn(
+        'flex-1 flex-row gap-1 rounded-3xl bg-white',
+        size === 'thumb' ? 'p-1.5' : 'p-3'
+      )}>
       {layout(garments, size)
         .filter((column) => column.length > 0)
         .map((column) => (

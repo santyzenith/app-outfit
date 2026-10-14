@@ -33,6 +33,7 @@ import {
   useClosetFilters,
 } from '@/lib/closet-filters';
 import { type Garment, type GarmentCategory, useGarments } from '@/lib/garments';
+import { useSavedOutfits } from '@/lib/outfits';
 
 // Tile widths that leave room for the gaps between columns.
 const TILE_WIDTH: Record<ClosetColumns, `${number}%`> = { 3: '32%', 4: '23.5%' };
@@ -75,6 +76,11 @@ const COMPARE: Record<Sort, (a: Garment, b: Garment) => number> = {
   least_worn: (a, b) => a.wear_count - b.wear_count || lastWorn(a) - lastWorn(b),
 };
 
+function savedSummary(count: number): string {
+  if (count === 0) return 'Tus combinaciones favoritas';
+  return count === 1 ? '1 outfit' : `${count} outfits`;
+}
+
 function closetSummary(count: number): string {
   if (count === 0) return 'Aquí vivirá tu ropa';
   return count === 1 ? '1 prenda' : `${count} prendas`;
@@ -86,6 +92,7 @@ export default function ClosetScreen() {
   const [sort, setSort] = React.useState<Sort>('recent');
   const [search, setSearch] = React.useState('');
   const [view, setView] = React.useState<ClosetView>('garments');
+  const { data: saved = [] } = useSavedOutfits();
   const filters = useClosetFilters();
   const filterCount = activeFilterCount(filters);
   const columns = useClosetColumns((state) => state.columns);
@@ -99,7 +106,10 @@ export default function ClosetScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScreenHeader title="Armario" eyebrow={closetSummary(garments.length)} />
+      <ScreenHeader
+        title="Armario"
+        eyebrow={view === 'garments' ? closetSummary(garments.length) : savedSummary(saved.length)}
+      />
       <UploadBanner />
       <View className="px-4 pb-3">
         <Segmented options={VIEWS} selected={view} onSelect={setView} />
