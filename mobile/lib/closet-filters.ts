@@ -36,6 +36,20 @@ export function matchesFilters(garment: Garment, filters: ClosetFilters): boolea
   );
 }
 
+// Accents are ignored so "sueter" finds "suéter".
+function normalize(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+export function matchesSearch(garment: Garment, search: string): boolean {
+  if (!search) return true;
+  const text = `${garment.name ?? ''} ${garment.color ?? ''} ${garment.brand ?? ''}`;
+  return normalize(text).includes(normalize(search));
+}
+
 export type ClosetColumns = 3 | 4;
 
 // How dense the closet grid is; kept on the phone between launches.

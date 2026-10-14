@@ -1,11 +1,17 @@
-import { router } from 'expo-router';
-import { ScrollView, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { Button } from '@/components/app/button';
 import { Text } from '@/components/ui/text';
-import { clearClosetFilters, colorFamily, useClosetFilters } from '@/lib/closet-filters';
+import {
+  clearClosetFilters,
+  colorFamily,
+  matchesFilters,
+  matchesSearch,
+  useClosetFilters,
+} from '@/lib/closet-filters';
 import { FORMALITY_OPTIONS, useGarments, WARMTH_OPTIONS } from '@/lib/garments';
 
 const ANY = 'any';
@@ -23,6 +29,17 @@ export default function ClosetFiltersSheet() {
   const insets = useSafeAreaInsets();
   const filters = useClosetFilters();
   const { data: garments = [] } = useGarments();
+  // Category and search live on the closet screen; they come along so the count matches it.
+  const { category = 'all', search = '' } = useLocalSearchParams<{
+    category?: string;
+    search?: string;
+  }>();
+  const count = garments.filter(
+    (g) =>
+      (category === 'all' || g.category === category) &&
+      matchesSearch(g, search.trim()) &&
+      matchesFilters(g, filters)
+  ).length;
   // Only colors that actually exist in this closet are offered.
   const colors = [...new Set(garments.map((g) => colorFamily(g.color)).filter(Boolean))]
     .sort()
@@ -37,6 +54,10 @@ export default function ClosetFiltersSheet() {
       className="bg-background"
       contentContainerClassName="gap-5 p-5"
       contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}>
+      {/* Material 3 drag handle; iOS draws its own grabber. */}
+      {Platform.OS === 'android' && (
+        <View className="-mt-2 h-1 w-8 self-center rounded-full bg-muted-foreground/40" />
+      )}
       <Text className="font-serif-medium text-2xl">Filtros</Text>
 
       <Group label="Abrigo">
@@ -73,7 +94,9 @@ export default function ClosetFiltersSheet() {
           <Text className="font-sans-semibold">Quitar filtros</Text>
         </Button>
         <Button size="lg" className="flex-1" onPress={() => router.back()}>
-          <Text className="font-sans-semibold">Ver prendas</Text>
+          <Text className="font-sans-semibold">
+            {count === 0 ? 'Ninguna prenda' : count === 1 ? 'Ver 1 prenda' : `Ver ${count} prendas`}
+          </Text>
         </Button>
       </View>
     </ScrollView>

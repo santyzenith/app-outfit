@@ -28,6 +28,7 @@ import {
   activeFilterCount,
   type ClosetColumns,
   matchesFilters,
+  matchesSearch,
   useClosetColumns,
   useClosetFilters,
 } from '@/lib/closet-filters';
@@ -73,20 +74,6 @@ const COMPARE: Record<Sort, (a: Garment, b: Garment) => number> = {
   // Forgotten clothes first: never worn, then the longest since last worn.
   least_worn: (a, b) => a.wear_count - b.wear_count || lastWorn(a) - lastWorn(b),
 };
-
-// Accents are ignored so "sueter" finds "suéter".
-function normalize(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
-
-function matchesSearch(garment: Garment, search: string): boolean {
-  if (!search) return true;
-  const text = `${garment.name ?? ''} ${garment.color ?? ''} ${garment.brand ?? ''}`;
-  return normalize(text).includes(normalize(search));
-}
 
 function closetSummary(count: number): string {
   if (count === 0) return 'Aquí vivirá tu ropa';
@@ -178,7 +165,12 @@ export default function ClosetScreen() {
                   variant="outline"
                   size="icon"
                   accessibilityLabel="Filtros"
-                  onPress={() => router.push('/closet-filters')}>
+                  onPress={() =>
+                    router.push({
+                      pathname: '/closet-filters',
+                      params: { category: filter, search },
+                    })
+                  }>
                   <Icon as={SlidersHorizontalIcon} size={18} />
                 </Button>
                 {filterCount > 0 && (
