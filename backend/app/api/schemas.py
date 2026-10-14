@@ -59,11 +59,19 @@ class GarmentOut(BaseModel):
     created_at: datetime
 
 
+class BasicColorOut(BaseModel):
+    key: str
+    # The color adjective agreeing with the shape, such as "blanca" for "Camiseta".
+    name: str
+    swatch: str
+    owned: bool
+
+
 class BasicOut(BaseModel):
     key: str
     name: str
     category: GarmentCategory
-    owned: bool
+    colors: list[BasicColorOut]
 
 
 class BasicsIn(BaseModel):

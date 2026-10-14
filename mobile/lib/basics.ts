@@ -11,12 +11,20 @@ import {
 import { queryClient } from '@/lib/query';
 import { useSession } from '@/lib/session';
 
+export type BasicColor = {
+  key: string;
+  // Agrees with the shape: "blanca" for "Camiseta", "blanco" for "Jean".
+  name: string;
+  swatch: string;
+  // Already in the closet in this color.
+  owned: boolean;
+};
+
 export type Basic = {
   key: string;
   name: string;
   category: GarmentCategory;
-  // Already in the closet, so the list can say so.
-  owned: boolean;
+  colors: BasicColor[];
 };
 
 const BASICS_KEY = ['basics'];
@@ -33,10 +41,10 @@ export function useAddBasics() {
   });
 }
 
-export function useBasicImage(key: string, size: ImageSize = 'thumb') {
+export function useBasicImage(shape: string, color: string, size: ImageSize = 'thumb') {
   const accessToken = useSession((state) => state.accessToken);
   return {
-    uri: `${API_URL}/v1/basics/${key}/image?size=${size}`,
+    uri: `${API_URL}/v1/basics/${shape}/image?color=${color}&size=${size}`,
     headers: { Authorization: `Bearer ${accessToken}` },
   };
 }

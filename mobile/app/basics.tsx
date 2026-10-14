@@ -10,97 +10,107 @@ import { Button } from '@/components/app/button';
 import { Pulse } from '@/components/app/pulse';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { type Basic, useAddBasics, useBasicImage, useBasics } from '@/lib/basics';
+import { type Basic, type BasicColor, useAddBasics, useBasicImage, useBasics } from '@/lib/basics';
 import { CATEGORY_OPTIONS } from '@/lib/garments';
 import { selectionFeedback, successFeedback } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
-const COLUMNS = 3;
+const pickKey = (shape: Basic, color: BasicColor) => `${shape.key}:${color.key}`;
 
-function rows<T>(items: T[]): T[][] {
-  return Array.from({ length: Math.ceil(items.length / COLUMNS) }, (_, index) =>
-    items.slice(index * COLUMNS, index * COLUMNS + COLUMNS)
-  );
+// A check must stay visible on white or beige as much as on navy.
+function isLight(hex: string): boolean {
+  const [r, g, b] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 160;
 }
 
-function BasicTile({
-  basic,
+function Swatch({
+  color,
   selected,
-  onToggle,
+  onPress,
 }: {
-  basic: Basic;
+  color: BasicColor;
   selected: boolean;
-  onToggle: () => void;
+  onPress: () => void;
 }) {
-  const image = useBasicImage(basic.key);
   return (
     <Pressable
       accessibilityRole="checkbox"
+      accessibilityLabel={color.name}
       accessibilityState={{ checked: selected }}
-      className="flex-1 gap-1.5 active:opacity-80"
-      onPress={onToggle}>
+      hitSlop={6}
+      onPress={onPress}
+      className={cn(
+        'rounded-full border-2 p-0.5',
+        selected ? 'border-foreground' : 'border-transparent'
+      )}>
+      {/* Garment colors are data, not theme colors, so they come inline. */}
       <View
-        className={cn(
-          'aspect-square overflow-hidden rounded-xl bg-white',
-          selected ? 'border-2 border-foreground' : 'border border-border'
-        )}>
-        <Image source={image} contentFit="cover" style={{ flex: 1 }} transition={150} />
+        className="h-8 w-8 items-center justify-center rounded-full border border-border"
+        style={{ backgroundColor: color.swatch }}>
         {selected && (
-          <View className="absolute right-1.5 top-1.5 h-6 w-6 items-center justify-center rounded-full bg-primary">
-            <Icon as={CheckIcon} size={14} className="text-primary-foreground" />
-          </View>
+          <Icon
+            as={CheckIcon}
+            size={14}
+            className={isLight(color.swatch) ? 'text-black' : 'text-white'}
+          />
         )}
       </View>
-      <Text numberOfLines={2} className="text-sm leading-tight">
-        {basic.name}
-      </Text>
-      {basic.owned && <Text className="text-xs text-muted-foreground">Ya la tienes</Text>}
     </Pressable>
   );
 }
 
-function Section({
-  label,
-  basics,
+function ShapeRow({
+  shape,
   selected,
   onToggle,
 }: {
-  label: string;
-  basics: Basic[];
+  shape: Basic;
   selected: Set<string>;
-  onToggle: (key: string) => void;
+  onToggle: (shape: Basic, color: BasicColor) => void;
 }) {
+  // The picture follows the last color tapped, so the choice is seen, not imagined.
+  const [preview, setPreview] = React.useState(shape.colors[0]);
+  const image = useBasicImage(shape.key, preview.key);
+  const owned = shape.colors.filter((color) => color.owned).map((color) => color.name);
+
   return (
-    <View className="gap-3">
-      <Text className="font-sans-medium text-sm text-muted-foreground">{label}</Text>
-      {rows(basics).map((row) => (
-        <View key={row[0].key} className="flex-row gap-3">
-          {row.map((basic) => (
-            <BasicTile
-              key={basic.key}
-              basic={basic}
-              selected={selected.has(basic.key)}
-              onToggle={() => onToggle(basic.key)}
+    <View className="flex-row gap-4">
+      <View className="h-24 w-24 overflow-hidden rounded-xl border border-border bg-white">
+        <Image source={image} contentFit="contain" style={{ flex: 1 }} transition={120} />
+      </View>
+      <View className="flex-1 gap-2">
+        <Text className="font-sans-semibold">{shape.name}</Text>
+        <View className="flex-row flex-wrap gap-1.5">
+          {shape.colors.map((color) => (
+            <Swatch
+              key={color.key}
+              color={color}
+              selected={selected.has(pickKey(shape, color))}
+              onPress={() => {
+                setPreview(color);
+                onToggle(shape, color);
+              }}
             />
           ))}
-          {/* Empty cells keep the last row's tiles the same width as the others. */}
-          {Array.from({ length: COLUMNS - row.length }, (_, index) => (
-            <View key={index} className="flex-1" />
-          ))}
         </View>
-      ))}
+        {owned.length > 0 && (
+          <Text className="text-xs text-muted-foreground">Ya tienes: {owned.join(', ')}</Text>
+        )}
+      </View>
     </View>
   );
 }
 
 function BasicsSkeleton() {
   return (
-    <Pulse style={{ gap: 12 }}>
-      {[0, 1].map((row) => (
-        <View key={row} className="flex-row gap-3">
-          {[0, 1, 2].map((tile) => (
-            <View key={tile} className="aspect-square flex-1 rounded-xl bg-muted" />
-          ))}
+    <Pulse style={{ gap: 20 }}>
+      {[0, 1, 2].map((row) => (
+        <View key={row} className="flex-row gap-4">
+          <View className="h-24 w-24 rounded-xl bg-muted" />
+          <View className="flex-1 gap-3 pt-1">
+            <View className="h-4 w-28 rounded-full bg-muted" />
+            <View className="h-8 w-48 rounded-full bg-muted" />
+          </View>
         </View>
       ))}
     </Pulse>
@@ -114,8 +124,9 @@ export default function BasicsScreen() {
   const add = useAddBasics();
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
 
-  function toggle(key: string): void {
+  function toggle(shape: Basic, color: BasicColor): void {
     selectionFeedback();
+    const key = pickKey(shape, color);
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
@@ -141,23 +152,22 @@ export default function BasicsScreen() {
         contentContainerClassName="gap-6 p-4"
         contentContainerStyle={{ paddingBottom: 120 }}>
         <Text className="text-muted-foreground">
-          Toca lo que tienes y lo sumamos a tu armario, sin fotos. Lo demás lo puedes fotografiar
-          después.
+          Toca los colores que tienes de cada prenda y los sumamos a tu armario, sin fotos.
         </Text>
         {isLoading ? (
           <BasicsSkeleton />
         ) : (
           CATEGORY_OPTIONS.map(({ value, label }) => {
-            const inCategory = basics.filter((basic) => basic.category === value);
-            return inCategory.length > 0 ? (
-              <Section
-                key={value}
-                label={label}
-                basics={inCategory}
-                selected={selected}
-                onToggle={toggle}
-              />
-            ) : null;
+            const shapes = basics.filter((shape) => shape.category === value);
+            if (shapes.length === 0) return null;
+            return (
+              <View key={value} className="gap-4">
+                <Text className="font-sans-medium text-sm text-muted-foreground">{label}</Text>
+                {shapes.map((shape) => (
+                  <ShapeRow key={shape.key} shape={shape} selected={selected} onToggle={toggle} />
+                ))}
+              </View>
+            );
           })
         )}
       </ScrollView>

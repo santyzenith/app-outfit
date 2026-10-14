@@ -3,7 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
 
-from app.api.schemas import BasicOut, BasicsIn, GarmentOut
+from app.api.schemas import BasicColorOut, BasicOut, BasicsIn, GarmentOut
 from app.auth.deps import CurrentUser, DbSession
 from app.garments import basics
 from app.garments.service import thumbnail
@@ -16,20 +16,36 @@ router = APIRouter(prefix="/basics", tags=["basics"])
 def list_basics(user: CurrentUser, db: DbSession) -> list[BasicOut]:
     owned = basics.owned_keys(db, user)
     return [
-        BasicOut(key=basic.key, name=basic.name, category=basic.category, owned=basic.key in owned)
-        for basic in basics.available(get_storage())
+        BasicOut(
+            key=shape.key,
+            name=shape.name,
+            category=shape.category,
+            colors=[
+                BasicColorOut(
+                    key=color.key,
+                    name=color.forms[basics.GENDER_INDEX[shape.gender]],
+                    swatch=color.swatch,
+                    owned=basics.basic_key(shape, color) in owned,
+                )
+                for color in (basics.COLORS[key] for key in shape.colors)
+            ],
+        )
+        for shape in basics.available()
     ]
 
 
-@router.get("/{key}/image")
+@router.get("/{shape_key}/image")
 def read_basic_image(
-    key: str, user: CurrentUser, size: Literal["full", "thumb"] = "full"
+    shape_key: str, color: str, user: CurrentUser, size: Literal["full", "thumb"] = "full"
 ) -> FileResponse:
-    storage = get_storage()
-    basic = basics.BY_KEY.get(key)
-    if basic is None or not storage.exists(basics.image_path(basic)):
+    try:
+        shape, paint = basics.parse_key(f"{shape_key}:{color}")
+    except basics.UnknownBasicError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "basic_not_found") from exc
+    if shape not in basics.available():
         raise HTTPException(status.HTTP_404_NOT_FOUND, "basic_not_found")
-    path = basics.image_path(basic)
+    storage = get_storage()
+    path = basics.image_path(storage, shape, paint)
     if size == "thumb":
         path = thumbnail(storage, path)
     return FileResponse(
