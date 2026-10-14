@@ -2,6 +2,7 @@ import { Link, router } from 'expo-router';
 import { ArrowUpDownIcon, PlusIcon, SearchIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { GarmentTile } from '@/components/app/garment-tile';
@@ -167,7 +168,14 @@ export default function ClosetScreen() {
               data={visible}
               keyExtractor={(garment) => garment.id}
               numColumns={COLUMNS}
-              renderItem={({ item }) => <GarmentTile garment={item} />}
+              renderItem={({ item, index }) => (
+                // Tiles cascade in; the cap keeps a long closet from waiting on its last rows.
+                <Animated.View
+                  entering={FadeIn.duration(300).delay(Math.min(index, 12) * 30)}
+                  style={{ flex: 1, maxWidth: '32%', aspectRatio: 1 }}>
+                  <GarmentTile garment={item} />
+                </Animated.View>
+              )}
               columnWrapperClassName="gap-2"
               contentContainerClassName="grow gap-2 px-4 pb-28 pt-1"
               onRefresh={() => void refetch()}

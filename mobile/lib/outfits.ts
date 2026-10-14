@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { create } from 'zustand';
 
 import { api, jsonBody } from '@/lib/api';
@@ -81,6 +81,8 @@ export function useDayOutfit(
       ),
     // Wait for the location so the outfit already matches that day's weather.
     enabled: enabled && coords !== undefined,
+    // Switching occasion keeps the last outfit on screen, dimmed, until the new one arrives.
+    placeholderData: keepPreviousData,
     retry: false,
   });
 }

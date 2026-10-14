@@ -1,21 +1,29 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { type Garment, useGarmentImage } from '@/lib/garments';
 import type { Outfit } from '@/lib/outfits';
 
-type Slot = { garment: Garment; weight: number };
+// Pieces arrive one after another, like clothes laid on a bed.
+const STAGGER_MS = 70;
 
-function Piece({ garment, weight }: Slot) {
+type Slot = { garment: Garment; weight: number; order: number };
+
+function Piece({ garment, weight, order }: Slot) {
   const image = useGarmentImage(garment);
   return (
-    <Pressable
-      accessibilityLabel={garment.name ?? undefined}
-      style={{ flex: weight }}
-      onPress={() => router.push({ pathname: '/garment/[id]', params: { id: garment.id } })}>
-      <Image source={image} contentFit="contain" style={{ flex: 1 }} transition={150} />
-    </Pressable>
+    <Animated.View
+      entering={FadeInDown.duration(380).delay(order * STAGGER_MS)}
+      style={{ flex: weight }}>
+      <Pressable
+        accessibilityLabel={garment.name ?? undefined}
+        style={{ flex: 1 }}
+        onPress={() => router.push({ pathname: '/garment/[id]', params: { id: garment.id } })}>
+        <Image source={image} contentFit="contain" style={{ flex: 1 }} transition={150} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -29,8 +37,13 @@ function Column({ slots }: { slots: Slot[] }) {
   );
 }
 
+// Reading order of the collage: outer layer first, shoes and accessory last.
+const ORDER = ['outerwear', 'top', 'one_piece', 'bottom', 'shoes', 'accessory'];
+
 function slots(...entries: [Garment | null, number][]): Slot[] {
-  return entries.flatMap(([garment, weight]) => (garment ? [{ garment, weight }] : []));
+  return entries.flatMap(([garment, weight]) =>
+    garment ? [{ garment, weight, order: ORDER.indexOf(garment.category ?? '') }] : []
+  );
 }
 
 // Two columns like a flat lay: what goes on top at the left, the long piece and shoes at the right.

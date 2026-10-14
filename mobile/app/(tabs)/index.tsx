@@ -2,19 +2,21 @@ import { Link } from 'expo-router';
 import { CheckIcon, RefreshCwIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { OutfitCollage } from '@/components/app/outfit-collage';
 import { OutfitTransition } from '@/components/app/outfit-transition';
 import { Pulse } from '@/components/app/pulse';
 import { SaveHeart } from '@/components/app/save-heart';
-import { ScreenHeader } from '@/components/app/screen-header';
 import { Spinner } from '@/components/app/spinner';
+import { TodayHeader } from '@/components/app/today-header';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ApiError } from '@/lib/api';
 import { type GarmentCategory, useGarments } from '@/lib/garments';
+import { successFeedback, tapFeedback } from '@/lib/haptics';
 import { useCoords } from '@/lib/location';
 import {
   OCCASIONS,
@@ -48,21 +50,6 @@ function offOccasionNote(outfit: Outfit): string | null {
     slots.length === 1 ? slots[0] : `${slots.slice(0, -1).join(', ')} ni ${slots.at(-1)}`;
   const occasion = OCCASIONS.find((option) => option.value === outfit.occasion)?.label;
   return `Aún no tienes ${list} para «${occasion}», así que usamos lo más cercano.`;
-}
-
-function todayLabel(): string {
-  const label = new Date().toLocaleDateString('es', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function weatherLabel(forecast: Outfit['forecast']): string | null {
-  if (!forecast) return null;
-  const range = `${Math.round(forecast.min_c)}° a ${Math.round(forecast.max_c)}°`;
-  return forecast.rain ? `${range} · probable lluvia` : range;
 }
 
 function Message({
@@ -110,7 +97,8 @@ export default function TodayScreen() {
   React.useEffect(retryFailedOutfits, [readyCount]);
   const noMoreOutfits =
     another.error instanceof ApiError && another.error.code === 'no_more_outfits';
-  const busy = another.isPending || wear.isPending;
+  const switching = today.isPlaceholderData;
+  const busy = another.isPending || wear.isPending || switching;
 
   function changeOccasion(next: typeof occasion): void {
     another.reset();
@@ -119,16 +107,13 @@ export default function TodayScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScreenHeader
-        title="Tu outfit de hoy"
-        eyebrow={[todayLabel(), weatherLabel(outfit?.forecast ?? null)].filter(Boolean).join(' · ')}
-      />
+      <TodayHeader forecast={outfit?.forecast ?? null} />
       <View className="flex-1 gap-4 px-4 pb-4">
         <ChoiceChips options={OCCASIONS} selected={occasion} onSelect={changeOccasion} />
 
         {outfit ? (
           <>
-            <OutfitTransition outfitId={outfit.id} dimmed={another.isPending}>
+            <OutfitTransition outfitId={outfit.id} dimmed={another.isPending || switching}>
               <View className="flex-1">
                 <OutfitCollage garments={outfit.garments} />
                 <SaveHeart outfit={outfit} />
@@ -150,17 +135,22 @@ export default function TodayScreen() {
             )}
 
             {outfit.worn ? (
-              <View className="h-12 flex-row items-center justify-center gap-2 rounded-md bg-secondary">
-                <Icon as={CheckIcon} size={18} />
-                <Text className="font-sans-medium">Hoy llevas este outfit</Text>
-              </View>
+              <Animated.View entering={ZoomIn.springify().damping(14)}>
+                <View className="h-12 flex-row items-center justify-center gap-2 rounded-md bg-secondary">
+                  <Icon as={CheckIcon} size={18} />
+                  <Text className="font-sans-medium">Hoy llevas este outfit</Text>
+                </View>
+              </Animated.View>
             ) : (
               <View className="flex-row gap-3">
                 <Button
                   variant="outline"
                   size="lg"
                   disabled={busy || noMoreOutfits}
-                  onPress={() => another.mutate(outfit)}>
+                  onPress={() => {
+                    tapFeedback();
+                    another.mutate(outfit);
+                  }}>
                   {another.isPending ? (
                     <Spinner size="small" />
                   ) : (
@@ -172,7 +162,7 @@ export default function TodayScreen() {
                   size="lg"
                   className="flex-1"
                   disabled={busy}
-                  onPress={() => wear.mutate(outfit)}>
+                  onPress={() => wear.mutate(outfit, { onSuccess: successFeedback })}>
                   <Text className="font-sans-semibold">Me lo pongo</Text>
                 </Button>
               </View>

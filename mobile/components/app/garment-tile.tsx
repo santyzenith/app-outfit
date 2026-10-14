@@ -34,7 +34,7 @@ export function GarmentTile({ garment }: { garment: Garment }) {
     <Pressable
       onPress={openDetail}
       onLongPress={confirmDelete}
-      className="aspect-square max-w-[32%] flex-1 overflow-hidden rounded-xl border border-border bg-white">
+      className="flex-1 overflow-hidden rounded-xl border border-border bg-white">
       <Image source={image} contentFit="cover" style={{ flex: 1 }} transition={150} />
 
       {garment.status === 'processing' && (

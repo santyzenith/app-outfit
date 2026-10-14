@@ -1,9 +1,16 @@
 import { HeartIcon } from 'lucide-react-native';
 import { Pressable } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { Icon } from '@/components/ui/icon';
-import { THEME } from '@/lib/theme';
+import { selectionFeedback } from '@/lib/haptics';
 import { type Outfit, useSaveOutfit, useUnsaveOutfit } from '@/lib/outfits';
+import { THEME } from '@/lib/theme';
 
 // Sits on the white collage canvas, so it always uses the light theme's ink.
 const INK = THEME.light.foreground;
@@ -12,10 +19,18 @@ export function SaveHeart({ outfit }: { outfit: Pick<Outfit, 'garments' | 'saved
   const save = useSaveOutfit();
   const unsave = useUnsaveOutfit();
   const saved = Boolean(outfit.saved_id);
+  const scale = useSharedValue(1);
+  const beat = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   function toggle(): void {
-    if (outfit.saved_id) unsave.mutate(outfit.saved_id);
-    else save.mutate(outfit.garments);
+    selectionFeedback();
+    if (outfit.saved_id) {
+      unsave.mutate(outfit.saved_id);
+    } else {
+      // A quick beat says "saved" before the server even answers.
+      scale.value = withSequence(withSpring(1.35, { duration: 160 }), withSpring(1));
+      save.mutate(outfit.garments);
+    }
   }
 
   return (
@@ -26,7 +41,14 @@ export function SaveHeart({ outfit }: { outfit: Pick<Outfit, 'garments' | 'saved
       hitSlop={10}
       onPress={toggle}
       className="absolute right-3 top-3 h-11 w-11 items-center justify-center rounded-full bg-white/90 active:opacity-70">
-      <Icon as={HeartIcon} size={22} color={INK} fill={saved ? INK : 'transparent'} />
+      <Animated.View style={beat}>
+        <Icon
+          as={HeartIcon}
+          size={22}
+          color={INK}
+          fill={saved || save.isPending ? INK : 'transparent'}
+        />
+      </Animated.View>
     </Pressable>
   );
 }

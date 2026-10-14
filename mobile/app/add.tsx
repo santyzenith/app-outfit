@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { tapFeedback } from '@/lib/haptics';
 import { enqueuePhoto } from '@/lib/upload-queue';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +44,7 @@ export default function AddGarmentsScreen() {
   async function takePhoto(): Promise<void> {
     if (shooting) return;
     setShooting(true);
+    tapFeedback();
     // A quick white blink confirms the shot without any sound.
     flash.value = withSequence(withTiming(0.7, { duration: 50 }), withTiming(0, { duration: 220 }));
     try {

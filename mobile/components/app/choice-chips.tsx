@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { selectionFeedback } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
 type ChoiceChipsProps<T extends string> = {
@@ -26,7 +27,10 @@ export function ChoiceChips<T extends string>({
             key={value}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            onPress={() => onSelect(value)}
+            onPress={() => {
+              if (!active) selectionFeedback();
+              onSelect(value);
+            }}
             className={cn(
               'items-center rounded-full border py-2.5',
               layout === 'fill' ? 'flex-1' : 'px-4',
