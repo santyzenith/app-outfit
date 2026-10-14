@@ -7,11 +7,11 @@ import { Segmented } from '@/components/app/segmented';
 import { Button } from '@/components/app/button';
 import { Text } from '@/components/ui/text';
 import {
-  clearClosetFilters,
   type ClosetColumns,
   colorFamily,
   matchesFilters,
   matchesSearch,
+  resetClosetView,
   SORT_OPTIONS,
   useClosetColumns,
   useClosetFilters,
@@ -120,8 +120,8 @@ export default function ClosetFiltersSheet() {
 
       {/* Outside the scroll so the actions stay visible however long the sheet gets. */}
       <View className="flex-row gap-3 px-5 pt-2">
-        <Button variant="outline" size="lg" onPress={clearClosetFilters}>
-          <Text className="font-sans-semibold">Quitar filtros</Text>
+        <Button variant="outline" size="lg" onPress={resetClosetView}>
+          <Text className="font-sans-semibold">Restablecer</Text>
         </Button>
         <Button size="lg" className="flex-1" onPress={() => router.back()}>
           <Text className="font-sans-semibold">

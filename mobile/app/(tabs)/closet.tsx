@@ -21,6 +21,7 @@ import {
   type ClosetSort,
   matchesFilters,
   matchesSearch,
+  SORT_OPTIONS,
   useClosetColumns,
   useClosetFilters,
 } from '@/lib/closet-filters';
@@ -78,8 +79,7 @@ export default function ClosetScreen() {
   const { data: saved = [] } = useSavedOutfits();
   const filters = useClosetFilters();
   const { columns, sort } = useClosetColumns();
-  // A non-default order counts too, so the badge warns that the closet isn't in its usual order.
-  const filterCount = activeFilterCount(filters) + (sort === 'recent' ? 0 : 1);
+  const filterCount = activeFilterCount(filters);
 
   // Garments still being catalogued have no category yet, so they only show under "Todo".
   const visible = garments
@@ -153,6 +153,14 @@ export default function ClosetScreen() {
               contentContainerClassName="px-4 pb-3">
               <ChoiceChips layout="wrap" options={FILTERS} selected={filter} onSelect={setFilter} />
             </ScrollView>
+          )}
+
+          {/* A different order is a choice that persists, so it is said out loud. */}
+          {garments.length > 0 && sort !== 'recent' && (
+            <Text className="px-4 pb-2 text-sm text-muted-foreground">
+              Ordenadas por{' '}
+              {SORT_OPTIONS.find((option) => option.value === sort)?.label.toLowerCase()}
+            </Text>
           )}
 
           {isLoading ? (

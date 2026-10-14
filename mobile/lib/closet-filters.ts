@@ -14,8 +14,10 @@ const NONE: ClosetFilters = { warmth: null, formality: null, color: null };
 
 export const useClosetFilters = create<ClosetFilters>(() => NONE);
 
-export function clearClosetFilters(): void {
+// Back to the usual closet: no filters and newest first. The column count is a display taste, so it stays.
+export function resetClosetView(): void {
   useClosetFilters.setState(NONE);
+  useClosetColumns.setState({ sort: 'recent' });
 }
 
 export function activeFilterCount(filters: ClosetFilters): number {
