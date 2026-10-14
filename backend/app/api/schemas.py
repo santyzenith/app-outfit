@@ -77,6 +77,7 @@ class OutfitOut(BaseModel):
     occasion: Occasion
     explanation: str
     worn: bool
+    planned: bool
     # One entry per garment category; empty slots are null.
     garments: dict[str, GarmentOut | None]
     # Categories the closet could only fill with something off the occasion.
@@ -98,3 +99,11 @@ class InspirationOut(BaseModel):
     missing: list[MissingPieceOut]
     explanation: str | None
     created_at: datetime
+
+
+class OutfitIn(BaseModel):
+    day: dt.date
+    occasion: Occasion
+    # True logs it as worn; false plans it for that day.
+    worn: bool
+    garments: dict[GarmentCategory, uuid.UUID | None]

@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { create } from 'zustand';
 
-import { api } from '@/lib/api';
+import { api, jsonBody } from '@/lib/api';
 import { type Garment, type GarmentCategory, refreshGarments } from '@/lib/garments';
 import type { Coords } from '@/lib/location';
 import { queryClient } from '@/lib/query';
@@ -14,6 +14,8 @@ export type Outfit = {
   occasion: Occasion;
   explanation: string;
   worn: boolean;
+  // Chosen by the user ahead of time rather than suggested by the app.
+  planned: boolean;
   garments: Record<GarmentCategory, Garment | null>;
   // Slots the closet could only fill with something off the occasion.
   off_occasion: GarmentCategory[];
@@ -56,11 +58,7 @@ export function coordsQuery(coords: Coords | null | undefined): string {
   return coords ? `&lat=${coords.lat}&lon=${coords.lon}` : '';
 }
 
-const HISTORY_KEY = ['outfit-history'];
-
-export function useOutfitHistory() {
-  return useQuery({ queryKey: HISTORY_KEY, queryFn: () => api<Outfit[]>('/outfits/history') });
-}
+const CALENDAR_KEY = ['outfit-calendar'];
 
 export function todayKey(occasion: Occasion) {
   return ['outfit', localDay(), occasion];
@@ -115,7 +113,41 @@ export function useWearOutfit(coords: Coords | null | undefined) {
     onSuccess: (outfit) => {
       queryClient.setQueryData(todayKey(outfit.occasion), outfit);
       void refreshGarments();
-      void queryClient.invalidateQueries({ queryKey: HISTORY_KEY });
+      void queryClient.invalidateQueries({ queryKey: CALENDAR_KEY });
     },
+  });
+}
+
+export function useCalendar(start: string, end: string) {
+  return useQuery({
+    queryKey: [...CALENDAR_KEY, start, end],
+    queryFn: () => api<Outfit[]>(`/outfits/calendar?start=${start}&end=${end}`),
+  });
+}
+
+function refreshAfterOutfitChange(): void {
+  void queryClient.invalidateQueries({ queryKey: CALENDAR_KEY });
+  void queryClient.invalidateQueries({ queryKey: ['outfit'] });
+  void refreshGarments();
+}
+
+export type OutfitDraft = {
+  day: string;
+  occasion: Occasion;
+  worn: boolean;
+  garments: Partial<Record<GarmentCategory, string | null>>;
+};
+
+export function useCreateOutfit() {
+  return useMutation({
+    mutationFn: (draft: OutfitDraft) => api<Outfit>('/outfits', jsonBody('POST', draft)),
+    onSuccess: refreshAfterOutfitChange,
+  });
+}
+
+export function useDeleteOutfit() {
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/outfits/${id}`, { method: 'DELETE' }),
+    onSuccess: refreshAfterOutfitChange,
   });
 }

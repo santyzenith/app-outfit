@@ -1,7 +1,7 @@
 import datetime as dt
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.ai.openrouter import AIError
@@ -13,6 +13,7 @@ from app.outfits.weather import Forecast
 # Outfits generated per model call: today's pick plus ready-made answers to "otra".
 BATCH_SIZE = 3
 FALLBACK_EXPLANATION = "Una combinación sencilla con prendas que no has usado últimamente."
+PLANNED_EXPLANATION = "El outfit que planeaste para hoy."
 
 Combo = frozenset[uuid.UUID]
 
@@ -31,6 +32,10 @@ class OutfitNotFoundError(Exception):
 
 
 class GarmentNotReadyError(Exception):
+    pass
+
+
+class InvalidOutfitError(Exception):
     pass
 
 
@@ -261,14 +266,110 @@ def another(db: Session, user: User, outfit: Outfit, forecast: Forecast | None) 
     return replacement
 
 
+def _refresh_wear(db: Session, garment_ids: set[uuid.UUID]) -> None:
+    # Count and last date always come from the worn outfits, so undoing a log stays exact.
+    db.flush()
+    for garment_id in garment_ids:
+        garment = db.get(Garment, garment_id)
+        if garment is None:
+            continue
+        wears = [
+            outfit.worn_at
+            for outfit in db.scalars(
+                select(Outfit).where(
+                    Outfit.user_id == garment.user_id,
+                    Outfit.worn_at.is_not(None),
+                    or_(*(getattr(Outfit, f"{c.value}_id") == garment_id for c in GarmentCategory)),
+                )
+            )
+        ]
+        garment.wear_count = len(wears)
+        garment.last_worn_at = max(wears, default=None)
+
+
 def wear(db: Session, outfit: Outfit) -> Outfit:
     if outfit.worn_at is None:
-        now = dt.datetime.now(dt.UTC)
-        outfit.worn_at = now
-        for garment_id in _combo(outfit.garment_ids()):
-            garment = db.get(Garment, garment_id)
-            if garment is not None:
-                garment.last_worn_at = now
-                garment.wear_count += 1
+        outfit.worn_at = dt.datetime.now(dt.UTC)
+        outfit.planned = False
+        _refresh_wear(db, set(_combo(outfit.garment_ids())))
         db.commit()
     return outfit
+
+
+def create_manual(
+    db: Session,
+    user: User,
+    day: dt.date,
+    occasion: Occasion,
+    garment_ids: dict[GarmentCategory, uuid.UUID | None],
+    worn: bool,
+) -> Outfit:
+    for category, garment_id in garment_ids.items():
+        if garment_id is None:
+            continue
+        garment = db.get(Garment, garment_id)
+        if (
+            garment is None
+            or garment.user_id != user.id
+            or garment.status != GarmentStatus.READY
+            or garment.category != category
+        ):
+            raise InvalidOutfitError
+    if not _is_wearable(OutfitChoice(garment_ids, "")):
+        raise InvalidOutfitError
+
+    existing = _for_day(db, user, day, occasion)
+    if not worn:
+        # A plan takes the place of whatever the app had prepared for that day.
+        now = dt.datetime.now(dt.UTC)
+        for outfit in existing:
+            if outfit.dismissed_at is None and outfit.worn_at is None:
+                outfit.dismissed_at = now
+    outfit = Outfit(
+        user_id=user.id,
+        day=day,
+        occasion=occasion,
+        position=len(existing),
+        explanation="" if worn else PLANNED_EXPLANATION,
+        planned=not worn,
+        **{f"{category.value}_id": gid for category, gid in garment_ids.items()},
+    )
+    db.add(outfit)
+    if worn:
+        # A day logged afterwards counts at noon of that day, not at the moment it was logged.
+        today = dt.datetime.now(dt.UTC).date()
+        outfit.worn_at = (
+            dt.datetime.now(dt.UTC)
+            if day >= today
+            else dt.datetime.combine(day, dt.time(12), dt.UTC)
+        )
+        _refresh_wear(db, set(_combo(garment_ids)))
+    db.commit()
+    return outfit
+
+
+def list_calendar(db: Session, user: User, start: dt.date, end: dt.date) -> list[Outfit]:
+    return list(
+        db.scalars(
+            select(Outfit)
+            .where(
+                Outfit.user_id == user.id,
+                Outfit.day >= start,
+                Outfit.day <= end,
+                or_(
+                    Outfit.worn_at.is_not(None),
+                    and_(Outfit.planned.is_(True), Outfit.dismissed_at.is_(None)),
+                ),
+            )
+            .order_by(Outfit.day, Outfit.created_at)
+        )
+    )
+
+
+def delete(db: Session, outfit: Outfit) -> None:
+    garment_ids = set(_combo(outfit.garment_ids()))
+    was_worn = outfit.worn_at is not None
+    db.delete(outfit)
+    if was_worn:
+        _refresh_wear(db, garment_ids)
+    db.commit()

@@ -40,6 +40,8 @@ class Outfit(Base):
     accessory_id: Mapped[uuid.UUID | None] = garment_slot()
 
     explanation: Mapped[str] = mapped_column(Text)
+    # Chosen by the user ahead of time rather than suggested by the app.
+    planned: Mapped[bool] = mapped_column(default=False, server_default="false")
     dismissed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     worn_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[dt.datetime] = mapped_column(

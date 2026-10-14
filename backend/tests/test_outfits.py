@@ -376,3 +376,67 @@ def test_today_flags_what_the_closet_could_not_match_to_the_occasion(client, use
 
     assert casual["off_occasion"] == []
     assert sorted(formal["off_occasion"]) == ["bottom", "shoes", "top"]
+
+
+def manual(client, headers, closet, worn, day=TODAY, occasion="casual", **overrides):
+    top, _, bottom, _, shoes = closet
+    garments = {"top": str(top.id), "bottom": str(bottom.id), "shoes": str(shoes.id), **overrides}
+    body = {"day": str(day), "occasion": occasion, "worn": worn, "garments": garments}
+    return client.post("/v1/outfits", json=body, headers=headers)
+
+
+def test_a_past_day_can_be_logged_by_hand(client, user, closet):
+    yesterday = TODAY - dt.timedelta(days=1)
+
+    logged = manual(client, user, closet, worn=True, day=yesterday)
+
+    assert logged.status_code == 201
+    assert logged.json()["worn"] is True
+    assert logged.json()["planned"] is False
+    top = logged.json()["garments"]["top"]
+    assert top["wear_count"] == 1
+    assert top["last_worn_at"].startswith(str(yesterday))
+
+
+def test_a_planned_outfit_is_the_one_shown_that_day(client, user, closet, stylist):
+    tomorrow = TODAY + dt.timedelta(days=1)
+    suggested = today(client, user, day=tomorrow).json()
+
+    planned = manual(client, user, closet, worn=False, day=tomorrow)
+
+    assert planned.json()["planned"] is True
+    shown = today(client, user, day=tomorrow).json()
+    assert shown["id"] == planned.json()["id"] != suggested["id"]
+
+
+def test_manual_outfits_must_be_wearable_and_use_own_garments(client, user, closet):
+    no_shoes = manual(client, user, closet, worn=True, shoes=None)
+    wrong_slot = manual(client, user, closet, worn=True, bottom=str(closet[0].id))
+    stranger = auth_header(client.post("/v1/auth/guest").json())
+    someone_elses = manual(client, stranger, closet, worn=True)
+
+    assert no_shoes.status_code == 422
+    assert wrong_slot.status_code == 422
+    assert someone_elses.status_code == 422
+
+
+def test_the_calendar_lists_worn_and_planned_outfits(client, user, closet, stylist):
+    worn = manual(client, user, closet, worn=True, day=TODAY - dt.timedelta(days=2)).json()
+    planned = manual(client, user, closet, worn=False, day=TODAY + dt.timedelta(days=3)).json()
+    today(client, user)
+    start, end = TODAY - dt.timedelta(days=7), TODAY + dt.timedelta(days=7)
+
+    calendar = client.get(f"/v1/outfits/calendar?start={start}&end={end}", headers=user).json()
+
+    assert [outfit["id"] for outfit in calendar] == [worn["id"], planned["id"]]
+
+
+def test_deleting_a_logged_outfit_undoes_its_wear(client, user, closet):
+    first = manual(client, user, closet, worn=True, day=TODAY - dt.timedelta(days=3)).json()
+    second = manual(client, user, closet, worn=True, day=TODAY - dt.timedelta(days=1)).json()
+
+    assert client.delete(f"/v1/outfits/{second['id']}", headers=user).status_code == 204
+
+    top = client.get(f"/v1/garments/{first['garments']['top']['id']}", headers=user).json()
+    assert top["wear_count"] == 1
+    assert top["last_worn_at"].startswith(str(TODAY - dt.timedelta(days=3)))

@@ -68,6 +68,7 @@ export default function RootLayout() {
             <Stack.Screen name="add" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="garment/[id]" options={{ title: 'Prenda' }} />
             <Stack.Screen name="look/[id]" options={{ title: 'Look' }} />
+            <Stack.Screen name="outfit/new" options={{ title: 'Outfit' }} />
           </Stack>
         </SessionGate>
         <PortalHost />

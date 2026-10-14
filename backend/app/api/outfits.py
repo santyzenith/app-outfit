@@ -5,10 +5,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.schemas import ForecastOut, GarmentOut, OutfitOut
+from app.api.schemas import ForecastOut, GarmentOut, OutfitIn, OutfitOut
 from app.auth.deps import CurrentUser, DbSession
 from app.garments import service as garment_service
-from app.models import Garment, Occasion, Outfit
+from app.models import Garment, GarmentCategory, Occasion, Outfit
 from app.outfits import service
 from app.outfits.candidates import FORMALITY_BY_OCCASION
 from app.outfits.weather import Forecast, get_forecast
@@ -42,6 +42,7 @@ def _outfit_out(db: Session, outfit: Outfit, forecast: Forecast | None) -> Outfi
         occasion=outfit.occasion,
         explanation=outfit.explanation,
         worn=outfit.worn_at is not None,
+        planned=outfit.planned,
         garments=garments,
         off_occasion=off_occasion,
         forecast=ForecastOut.model_validate(forecast) if forecast else None,
@@ -112,6 +113,30 @@ def read_history(
     user: CurrentUser, db: DbSession, limit: Annotated[int, Query(ge=1, le=100)] = 30
 ) -> list[OutfitOut]:
     return [_outfit_out(db, outfit, None) for outfit in service.list_worn(db, user, limit)]
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_outfit(body: OutfitIn, user: CurrentUser, db: DbSession) -> OutfitOut:
+    garment_ids = {category: body.garments.get(category) for category in GarmentCategory}
+    try:
+        outfit = service.create_manual(db, user, body.day, body.occasion, garment_ids, body.worn)
+    except service.InvalidOutfitError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_outfit") from exc
+    return _outfit_out(db, outfit, None)
+
+
+@router.get("/calendar")
+def read_calendar(
+    start: dt.date, end: dt.date, user: CurrentUser, db: DbSession
+) -> list[OutfitOut]:
+    if not dt.timedelta(0) <= end - start <= dt.timedelta(days=62):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_range")
+    return [_outfit_out(db, outfit, None) for outfit in service.list_calendar(db, user, start, end)]
+
+
+@router.delete("/{outfit_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_outfit(outfit: OwnedOutfit, db: DbSession) -> None:
+    service.delete(db, outfit)
 
 
 @router.post("/{outfit_id}/another")
