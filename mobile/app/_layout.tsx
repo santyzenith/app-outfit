@@ -70,6 +70,16 @@ export default function RootLayout() {
             <Stack.Screen name="look/[id]" options={{ title: 'Look' }} />
             <Stack.Screen name="outfit/new" options={{ title: 'Outfit' }} />
             <Stack.Screen name="saved/[id]" options={{ title: 'Outfit guardado' }} />
+            <Stack.Screen
+              name="closet-filters"
+              options={{
+                headerShown: false,
+                presentation: 'formSheet',
+                sheetAllowedDetents: 'fitToContents',
+                sheetGrabberVisible: true,
+                sheetCornerRadius: 24,
+              }}
+            />
           </Stack>
         </SessionGate>
         <PortalHost />

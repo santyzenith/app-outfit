@@ -1,5 +1,5 @@
 import { Link, router } from 'expo-router';
-import { ArrowUpDownIcon, PlusIcon, SearchIcon } from 'lucide-react-native';
+import { ArrowUpDownIcon, PlusIcon, SearchIcon, SlidersHorizontalIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -22,6 +22,7 @@ import {
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
+import { activeFilterCount, matchesFilters, useClosetFilters } from '@/lib/closet-filters';
 import { type Garment, type GarmentCategory, useGarments } from '@/lib/garments';
 
 const COLUMNS = 3;
@@ -66,7 +67,10 @@ const COMPARE: Record<Sort, (a: Garment, b: Garment) => number> = {
 
 // Accents are ignored so "sueter" finds "suéter".
 function normalize(text: string): string {
-  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 }
 
 function matchesSearch(garment: Garment, search: string): boolean {
@@ -85,11 +89,14 @@ export default function ClosetScreen() {
   const [sort, setSort] = React.useState<Sort>('recent');
   const [search, setSearch] = React.useState('');
   const [view, setView] = React.useState<ClosetView>('garments');
+  const filters = useClosetFilters();
+  const filterCount = activeFilterCount(filters);
 
   // Garments still being catalogued have no category yet, so they only show under "Todo".
   const visible = garments
     .filter((g) => filter === 'all' || g.category === filter)
     .filter((g) => matchesSearch(g, search.trim()))
+    .filter((g) => matchesFilters(g, filters))
     .sort(COMPARE[sort]);
 
   return (
@@ -139,6 +146,25 @@ export default function ClosetScreen() {
                   </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <View>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  accessibilityLabel="Filtros"
+                  className="h-11 w-11 rounded-full"
+                  onPress={() => router.push('/closet-filters')}>
+                  <Icon as={SlidersHorizontalIcon} size={18} />
+                </Button>
+                {filterCount > 0 && (
+                  <View
+                    pointerEvents="none"
+                    className="absolute -right-1 -top-1 h-5 w-5 items-center justify-center rounded-full bg-primary">
+                    <Text className="font-sans-bold text-xs text-primary-foreground">
+                      {filterCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           )}
 
@@ -193,7 +219,7 @@ export default function ClosetScreen() {
                     {isError
                       ? 'Desliza hacia abajo para intentarlo de nuevo.'
                       : garments.length > 0
-                        ? 'Prueba con otra búsqueda o tipo de prenda.'
+                        ? 'Prueba con otra búsqueda, otro tipo o quita los filtros.'
                         : 'Fotografía tu ropa y la ordenamos por ti. Con una parte de arriba, una de abajo y unos zapatos ya tienes tu primer outfit.'}
                   </Text>
                 </View>
