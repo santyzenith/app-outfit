@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { Garment } from '@/lib/garments';
 
@@ -33,3 +35,13 @@ export function matchesFilters(garment: Garment, filters: ClosetFilters): boolea
     (!filters.color || colorFamily(garment.color) === filters.color)
   );
 }
+
+export type ClosetColumns = 3 | 4;
+
+// How dense the closet grid is; kept on the phone between launches.
+export const useClosetColumns = create<{ columns: ClosetColumns }>()(
+  persist(() => ({ columns: 3 as ClosetColumns }), {
+    name: 'closet-columns',
+    storage: createJSONStorage(() => AsyncStorage),
+  })
+);

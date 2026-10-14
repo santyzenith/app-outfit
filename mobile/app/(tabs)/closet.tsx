@@ -15,17 +15,26 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
-import { activeFilterCount, matchesFilters, useClosetFilters } from '@/lib/closet-filters';
+import {
+  activeFilterCount,
+  type ClosetColumns,
+  matchesFilters,
+  useClosetColumns,
+  useClosetFilters,
+} from '@/lib/closet-filters';
 import { type Garment, type GarmentCategory, useGarments } from '@/lib/garments';
 
-const COLUMNS = 3;
+// Tile widths that leave room for the gaps between columns.
+const TILE_WIDTH: Record<ClosetColumns, `${number}%`> = { 3: '32%', 4: '23.5%' };
 
 type Filter = GarmentCategory | 'all';
 
@@ -92,6 +101,7 @@ export default function ClosetScreen() {
   const [view, setView] = React.useState<ClosetView>('garments');
   const filters = useClosetFilters();
   const filterCount = activeFilterCount(filters);
+  const columns = useClosetColumns((state) => state.columns);
 
   // Garments still being catalogued have no category yet, so they only show under "Todo".
   const visible = garments
@@ -145,6 +155,22 @@ export default function ClosetScreen() {
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>
+                    <Text className="font-sans-medium text-xs text-muted-foreground">Vista</Text>
+                  </DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={String(columns)}
+                    onValueChange={(next) =>
+                      useClosetColumns.setState({ columns: Number(next) as ClosetColumns })
+                    }>
+                    <DropdownMenuRadioItem value="3">
+                      <Text className="font-sans">3 columnas</Text>
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="4">
+                      <Text className="font-sans">4 columnas</Text>
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
               <View>
@@ -194,12 +220,14 @@ export default function ClosetScreen() {
             <FlatList
               data={visible}
               keyExtractor={(garment) => garment.id}
-              numColumns={COLUMNS}
+              // A FlatList cannot change its column count in place, so it remounts.
+              key={columns}
+              numColumns={columns}
               renderItem={({ item, index }) => (
                 // Tiles cascade in; the cap keeps a long closet from waiting on its last rows.
                 <Animated.View
                   entering={FadeIn.duration(300).delay(Math.min(index, 12) * 30)}
-                  style={{ flex: 1, maxWidth: '32%', aspectRatio: 1 }}>
+                  style={{ flex: 1, maxWidth: TILE_WIDTH[columns], aspectRatio: 1 }}>
                   <GarmentTile garment={item} />
                 </Animated.View>
               )}

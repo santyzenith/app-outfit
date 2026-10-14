@@ -1,11 +1,16 @@
 import { Tabs } from 'expo-router';
 import { CalendarDaysIcon, ShirtIcon, SparklesIcon, WandSparklesIcon } from 'lucide-react-native';
 
+import { TabButton } from '@/components/app/tab-button';
 import { Icon } from '@/components/ui/icon';
 
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarButton: ({ ref: _ref, ...props }) => <TabButton {...props} />,
+      }}>
       <Tabs.Screen
         name="index"
         options={{
