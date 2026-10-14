@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, ScrollView, View } from 'react-native';
 
 import { OutfitCollage } from '@/components/app/outfit-collage';
-import { Spinner } from '@/components/app/spinner';
+import { LookSkeleton } from '@/components/app/skeletons';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ApiError } from '@/lib/api';
@@ -109,9 +109,17 @@ export default function LookScreen() {
 
   if (inspiration) return <Look inspiration={inspiration} />;
 
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-background">
+        <LookSkeleton />
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 items-center justify-center bg-background px-8">
-      {isLoading ? <Spinner /> : <Text className="text-center">Este look ya no existe.</Text>}
+      <Text className="text-center">Este look ya no existe.</Text>
     </View>
   );
 }

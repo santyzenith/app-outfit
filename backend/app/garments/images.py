@@ -5,6 +5,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 PHOTO_MAX_SIDE = 1600
 CATALOG_SIDE = 1024
+# Enough for a closet tile on a dense phone screen, a fraction of the full image's weight.
+THUMBNAIL_SIDE = 384
 
 # The background level is read from the darkest 5% of the image border.
 BACKGROUND_PERCENTILE = 0.05
@@ -71,3 +73,12 @@ def _whiten_background(image: Image.Image) -> Image.Image:
 
 def normalize_catalog_image(data: bytes) -> bytes:
     return _to_jpeg(_whiten_background(_open(data)), CATALOG_SIDE)
+
+
+def make_thumbnail(data: bytes) -> bytes:
+    return _to_jpeg(_open(data), THUMBNAIL_SIDE)
+
+
+def thumbnail_path(image_path: str) -> str:
+    # Next to its image, so a new image version never reuses an old thumbnail.
+    return image_path.removesuffix(".jpg") + "_thumb.jpg"

@@ -93,13 +93,21 @@ export function useDeleteGarment() {
   });
 }
 
-export function useGarmentImage(garment: Garment, forced?: 'catalog' | 'original') {
+export type ImageSize = 'full' | 'thumb';
+
+type ImageOptions = {
+  variant?: 'catalog' | 'original';
+  // Small spots (tiles, calendar, cards) load a light thumbnail instead of the full image.
+  size?: ImageSize;
+};
+
+export function useGarmentImage(garment: Garment, { variant, size = 'full' }: ImageOptions = {}) {
   // Photos are private, so the image request carries the session token.
   const accessToken = useSession((state) => state.accessToken);
-  const variant = forced ?? (garment.status === 'ready' ? 'catalog' : 'original');
+  const shown = variant ?? (garment.status === 'ready' ? 'catalog' : 'original');
   return {
     // The version changes when the image is replaced, so a cached copy is never shown.
-    uri: `${API_URL}/v1/garments/${garment.id}/image?variant=${variant}&v=${garment.image_version}`,
+    uri: `${API_URL}/v1/garments/${garment.id}/image?variant=${shown}&size=${size}&v=${garment.image_version}`,
     headers: { Authorization: `Bearer ${accessToken}` },
   };
 }

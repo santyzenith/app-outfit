@@ -10,7 +10,7 @@ import { type Garment, useGarmentImage } from '@/lib/garments';
 import { type Inspiration, useDeleteInspiration, useInspirationImage } from '@/lib/inspirations';
 
 function Thumb({ garment }: { garment: Garment }) {
-  const image = useGarmentImage(garment);
+  const image = useGarmentImage(garment, { size: 'thumb' });
   return (
     <View className="h-14 w-14 overflow-hidden rounded-lg bg-white">
       <Image source={image} contentFit="contain" style={{ flex: 1 }} />
@@ -41,7 +41,7 @@ function Matched({ inspiration }: { inspiration: Inspiration }) {
 }
 
 export function LookCard({ inspiration }: { inspiration: Inspiration }) {
-  const photo = useInspirationImage(inspiration);
+  const photo = useInspirationImage(inspiration, 'thumb');
   const remove = useDeleteInspiration();
   const ready = inspiration.status === 'ready';
 

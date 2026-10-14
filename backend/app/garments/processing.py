@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app import jobs
 from app.ai.garments import GarmentAnalysis, analizar_prenda, recrear_prenda
-from app.garments.images import normalize_catalog_image
+from app.garments.images import normalize_catalog_image, thumbnail_path
 from app.garments.service import PROCESS_JOB, create_from_shared_photo, describe
 from app.models import Garment, GarmentStatus
 from app.storage import get_storage
@@ -50,6 +50,7 @@ def process_garment(db: Session, payload: jobs.Payload) -> None:
     garment.image_path = storage.save(garment.user_id, filename, catalog_image)
     if previous_image:
         storage.delete(previous_image)
+        storage.delete(thumbnail_path(previous_image))
     garment.status = GarmentStatus.READY
     for item in others:
         create_from_shared_photo(db, storage, garment, item)

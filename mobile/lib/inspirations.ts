@@ -3,7 +3,7 @@ import { File, UploadType } from 'expo-file-system';
 
 import { api } from '@/lib/api';
 import { API_URL } from '@/lib/config';
-import type { Garment, GarmentCategory } from '@/lib/garments';
+import type { Garment, GarmentCategory, ImageSize } from '@/lib/garments';
 import type { Coords } from '@/lib/location';
 import { coordsQuery, localDay, type Outfit, todayKey, useOccasion } from '@/lib/outfits';
 import { queryClient } from '@/lib/query';
@@ -37,10 +37,10 @@ export function useInspirations() {
   });
 }
 
-export function useInspirationImage(inspiration: Inspiration) {
+export function useInspirationImage(inspiration: Inspiration, size: ImageSize = 'full') {
   const accessToken = useSession((state) => state.accessToken);
   return {
-    uri: `${API_URL}/v1/inspirations/${inspiration.id}/image`,
+    uri: `${API_URL}/v1/inspirations/${inspiration.id}/image?size=${size}`,
     headers: { Authorization: `Bearer ${accessToken}` },
   };
 }

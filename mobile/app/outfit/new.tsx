@@ -81,7 +81,7 @@ function Tile({
   selected: boolean;
   onPress: () => void;
 }) {
-  const image = useGarmentImage(garment);
+  const image = useGarmentImage(garment, { size: 'thumb' });
   return (
     <Pressable
       accessibilityLabel={garment.name ?? undefined}

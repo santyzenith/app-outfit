@@ -1,6 +1,6 @@
 import datetime as dt
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.outfits import Latitude, Longitude, _forecast, _not_enough_garments, _outfit_out
 from app.api.schemas import GarmentOut, InspirationOut, MissingPieceOut, OutfitOut
 from app.auth.deps import CurrentUser, DbSession
+from app.garments import service as garment_service
 from app.garments.images import MAX_UPLOAD_BYTES, InvalidImageError
 from app.inspirations import service
 from app.models import Garment, Inspiration, InspirationStatus, Occasion
@@ -74,9 +75,15 @@ def delete_inspiration(inspiration: OwnedInspiration, db: DbSession) -> None:
 
 
 @router.get("/{inspiration_id}/image")
-def read_inspiration_image(inspiration: OwnedInspiration) -> FileResponse:
+def read_inspiration_image(
+    inspiration: OwnedInspiration, size: Literal["full", "thumb"] = "full"
+) -> FileResponse:
+    storage = get_storage()
+    path = inspiration.photo_path
+    if size == "thumb":
+        path = garment_service.thumbnail(storage, path)
     return FileResponse(
-        get_storage().path(inspiration.photo_path),
+        storage.path(path),
         media_type="image/jpeg",
         headers={"Cache-Control": "private, max-age=86400"},
     )

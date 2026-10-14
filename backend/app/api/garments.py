@@ -72,13 +72,18 @@ def delete_garment(garment: OwnedGarment, db: DbSession) -> None:
 
 @router.get("/{garment_id}/image")
 def read_garment_image(
-    garment: OwnedGarment, variant: Literal["catalog", "original"] = "catalog"
+    garment: OwnedGarment,
+    variant: Literal["catalog", "original"] = "catalog",
+    size: Literal["full", "thumb"] = "full",
 ) -> FileResponse:
     relative_path = garment.image_path if variant == "catalog" else garment.original_path
     if relative_path is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "image_not_ready")
+    storage = get_storage()
+    if size == "thumb":
+        relative_path = service.thumbnail(storage, relative_path)
     return FileResponse(
-        get_storage().path(relative_path),
+        storage.path(relative_path),
         media_type="image/jpeg",
         headers={"Cache-Control": "private, max-age=86400"},
     )

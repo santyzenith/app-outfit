@@ -14,7 +14,7 @@ const FAILURE_TEXT: Record<string, string> = {
 };
 
 export function GarmentTile({ garment }: { garment: Garment }) {
-  const image = useGarmentImage(garment);
+  const image = useGarmentImage(garment, { size: 'thumb' });
   const retry = useRetryGarment();
   const remove = useDeleteGarment();
 
@@ -35,7 +35,13 @@ export function GarmentTile({ garment }: { garment: Garment }) {
       onPress={openDetail}
       onLongPress={confirmDelete}
       className="flex-1 overflow-hidden rounded-xl border border-border bg-white">
-      <Image source={image} contentFit="cover" style={{ flex: 1 }} transition={150} />
+      <Image
+        source={image}
+        contentFit="cover"
+        style={{ flex: 1 }}
+        transition={150}
+        recyclingKey={garment.id}
+      />
 
       {garment.status === 'processing' && (
         <View className="absolute inset-0 items-center justify-center gap-1 bg-background/70">

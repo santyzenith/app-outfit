@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, ScrollView, View } from 'react-native';
 
 import { OutfitCollage } from '@/components/app/outfit-collage';
-import { Spinner } from '@/components/app/spinner';
+import { OutfitSkeleton } from '@/components/app/skeletons';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ApiError } from '@/lib/api';
@@ -63,9 +63,17 @@ export default function SavedOutfitScreen() {
 
   if (saved) return <Saved saved={saved} />;
 
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-background">
+        <OutfitSkeleton />
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 items-center justify-center bg-background px-8">
-      {isLoading ? <Spinner /> : <Text className="text-center">Este outfit ya no existe.</Text>}
+      <Text className="text-center">Este outfit ya no existe.</Text>
     </View>
   );
 }

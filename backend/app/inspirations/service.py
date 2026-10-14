@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import jobs
 from app.config import get_settings
-from app.garments.images import normalize_photo
+from app.garments.images import normalize_photo, thumbnail_path
 from app.models import Inspiration, User
 from app.storage import Storage
 
@@ -64,3 +64,4 @@ def delete(db: Session, storage: Storage, inspiration: Inspiration) -> None:
     db.delete(inspiration)
     db.commit()
     storage.delete(inspiration.photo_path)
+    storage.delete(thumbnail_path(inspiration.photo_path))

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app import jobs
 from app.ai.garments import GarmentAnalysis
 from app.config import get_settings
-from app.garments.images import normalize_photo
+from app.garments.images import make_thumbnail, normalize_photo, thumbnail_path
 from app.models import Garment, GarmentStatus, User
 from app.storage import Storage
 
@@ -108,9 +108,18 @@ def retry(db: Session, garment: Garment) -> Garment:
 
 
 def delete(db: Session, storage: Storage, garment: Garment) -> None:
-    paths = [garment.original_path, garment.image_path]
+    paths = [path for path in (garment.original_path, garment.image_path) if path]
     db.delete(garment)
     db.commit()
     for path in paths:
-        if path:
-            storage.delete(path)
+        storage.delete(path)
+        storage.delete(thumbnail_path(path))
+
+
+def thumbnail(storage: Storage, image_path: str) -> str:
+    # Made the first time it is asked for, then served from disk.
+    path = thumbnail_path(image_path)
+    if not storage.path(path).exists():
+        user_folder, filename = path.split("/", 1)
+        storage.save(uuid.UUID(user_folder), filename, make_thumbnail(storage.read(image_path)))
+    return path

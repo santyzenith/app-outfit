@@ -75,7 +75,7 @@ function mainGarment(outfit: Outfit): Garment | null {
 }
 
 function CellThumb({ garment }: { garment: Garment }) {
-  const image = useGarmentImage(garment);
+  const image = useGarmentImage(garment, { size: 'thumb' });
   return (
     <View className="h-7 w-7 overflow-hidden rounded-md bg-white">
       <Image source={image} contentFit="contain" style={{ flex: 1 }} />
@@ -228,7 +228,7 @@ export default function CalendarScreen() {
   const weeks = monthGrid(month);
   const start = localDay(weeks[0][0]);
   const end = localDay(weeks[weeks.length - 1][6]);
-  const { data: outfits = [] } = useCalendar(start, end);
+  const { data: outfits = [], isLoading } = useCalendar(start, end);
 
   const byDay = new Map<string, Outfit[]>();
   for (const outfit of outfits) byDay.set(outfit.day, [...(byDay.get(outfit.day) ?? []), outfit]);
@@ -297,7 +297,12 @@ export default function CalendarScreen() {
 
         <View className="gap-4 rounded-3xl border border-border p-4">
           <Text className="font-serif-medium text-2xl">{selectedLabel}</Text>
-          {dayOutfits.length === 0 && (
+          {isLoading && (
+            <Pulse>
+              <View className="h-64 rounded-3xl bg-muted" />
+            </Pulse>
+          )}
+          {!isLoading && dayOutfits.length === 0 && (
             <Text className="text-muted-foreground">
               {selectedDay > today ? 'Aún no hay nada planeado.' : 'No registraste nada este día.'}
             </Text>

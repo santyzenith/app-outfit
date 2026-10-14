@@ -394,3 +394,20 @@ def test_a_guest_closet_moves_to_the_account_they_sign_in_to(
     assert client.get(f"{url}?variant=original", headers=owner).status_code == 200
     assert not get_storage().path(guest_id).exists()
     assert client.get("/v1/me", headers=user).status_code == 401
+
+
+def test_thumbnails_are_small_and_go_away_with_the_garment(client, db, user, fake_ai):
+    garment = upload(client, user).json()
+    jobs.run_next_job(db)
+    url = f"/v1/garments/{garment['id']}/image?size=thumb"
+
+    first = client.get(url, headers=user)
+    again = client.get(url, headers=user)
+    original = client.get(f"{url}&variant=original", headers=user)
+
+    assert first.status_code == again.status_code == original.status_code == 200
+    assert max(Image.open(io.BytesIO(first.content)).size) == 384
+    user_folder = get_storage().path(client.get("/v1/me", headers=user).json()["id"])
+    assert len(list(user_folder.glob("*_thumb.jpg"))) == 2
+    client.delete(f"/v1/garments/{garment['id']}", headers=user)
+    assert list(user_folder.iterdir()) == []

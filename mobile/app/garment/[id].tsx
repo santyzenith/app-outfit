@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
-import { Spinner } from '@/components/app/spinner';
+import { GarmentSkeleton } from '@/components/app/skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
@@ -44,7 +44,7 @@ function wearSummary(garment: Garment): string {
 // Mounted only once the garment is loaded, so the form can start from its values.
 function GarmentForm({ garment }: { garment: Garment }) {
   const [showOriginal, setShowOriginal] = React.useState(false);
-  const image = useGarmentImage(garment, showOriginal ? 'original' : undefined);
+  const image = useGarmentImage(garment, { variant: showOriginal ? 'original' : undefined });
   const update = useUpdateGarment();
   const remove = useDeleteGarment();
   const buildAround = useBuildAroundGarment(useCoords());
@@ -165,9 +165,17 @@ export default function GarmentScreen() {
 
   if (garment) return <GarmentForm garment={garment} />;
 
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-background">
+        <GarmentSkeleton />
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 items-center justify-center bg-background px-8">
-      {isLoading ? <Spinner /> : <Text className="text-center">Esta prenda ya no existe.</Text>}
+      <Text className="text-center">Esta prenda ya no existe.</Text>
     </View>
   );
 }
