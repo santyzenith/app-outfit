@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Icon } from '@/components/ui/icon';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/app/input';
 import { Text } from '@/components/ui/text';
 import {
   activeFilterCount,
@@ -130,7 +130,7 @@ export default function ClosetScreen() {
                   onChangeText={setSearch}
                   placeholder="Buscar prenda"
                   returnKeyType="search"
-                  className="h-11 rounded-full pl-10 font-sans"
+                  className="h-11 rounded-full pl-10"
                 />
                 <View pointerEvents="none" className="absolute left-3.5">
                   <Icon as={SearchIcon} size={18} className="text-muted-foreground" />

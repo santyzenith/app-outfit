@@ -64,7 +64,13 @@ export default function RootLayout() {
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <SessionGate>
           {/* One smooth push/pop for every detail screen, instead of Android's default fade. */}
-          <Stack screenOptions={{ animation: 'ios_from_right' }}>
+          {/* Flat header with the serif title, like the tabs' own headers. */}
+          <Stack
+            screenOptions={{
+              animation: 'ios_from_right',
+              headerShadowVisible: false,
+              headerTitleStyle: { fontFamily: 'Newsreader_500Medium', fontSize: 24 },
+            }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
               name="add"

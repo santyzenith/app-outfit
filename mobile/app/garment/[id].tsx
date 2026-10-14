@@ -2,12 +2,12 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
 import { GarmentSkeleton } from '@/components/app/skeletons';
 import { Button } from '@/components/app/button';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/app/input';
 import { Text } from '@/components/ui/text';
 import {
   CATEGORY_OPTIONS,
@@ -144,7 +144,6 @@ function GarmentForm({ garment }: { garment: Garment }) {
                   value={form.brand}
                   onChangeText={(brand) => setForm((current) => ({ ...current, brand }))}
                   maxLength={60}
-                  className="font-sans"
                 />
               </Field>
             </View>
@@ -155,7 +154,6 @@ function GarmentForm({ garment }: { garment: Garment }) {
                   onChangeText={(size) => setForm((current) => ({ ...current, size }))}
                   maxLength={20}
                   autoCapitalize="characters"
-                  className="font-sans"
                 />
               </Field>
             </View>
@@ -167,7 +165,6 @@ function GarmentForm({ garment }: { garment: Garment }) {
               maxLength={500}
               multiline
               placeholder="Por ejemplo: lavar a mano"
-              className="h-20 py-2 font-sans"
               style={{ textAlignVertical: 'top' }}
             />
           </Field>
@@ -184,11 +181,16 @@ function GarmentForm({ garment }: { garment: Garment }) {
         </Text>
       )}
 
-      <Button size="lg" disabled={!canSave} onPress={save}>
-        <Text className="font-sans-semibold">
-          {update.isPending ? 'Guardando…' : 'Guardar cambios'}
-        </Text>
-      </Button>
+      {/* Only shown once there is something to save, instead of a disabled button. */}
+      {(changed || update.isPending) && (
+        <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOut.duration(150)}>
+          <Button size="lg" disabled={!canSave} onPress={save}>
+            <Text className="font-sans-semibold">
+              {update.isPending ? 'Guardando…' : 'Guardar cambios'}
+            </Text>
+          </Button>
+        </Animated.View>
+      )}
       <Button
         variant="outline"
         size="lg"
