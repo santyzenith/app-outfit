@@ -51,10 +51,17 @@ export function matchesSearch(garment: Garment, search: string): boolean {
 }
 
 export type ClosetColumns = 3 | 4;
+export type ClosetSort = 'recent' | 'most_worn' | 'least_worn';
 
-// How dense the closet grid is; kept on the phone between launches.
-export const useClosetColumns = create<{ columns: ClosetColumns }>()(
-  persist(() => ({ columns: 3 as ClosetColumns }), {
+export const SORT_OPTIONS: { value: ClosetSort; label: string }[] = [
+  { value: 'recent', label: 'Recientes' },
+  { value: 'most_worn', label: 'Más usadas' },
+  { value: 'least_worn', label: 'Menos usadas' },
+];
+
+// How the closet grid is laid out and ordered; kept on the phone between launches.
+export const useClosetColumns = create<{ columns: ClosetColumns; sort: ClosetSort }>()(
+  persist(() => ({ columns: 3 as ClosetColumns, sort: 'recent' as ClosetSort }), {
     name: 'closet-columns',
     storage: createJSONStorage(() => AsyncStorage),
   })

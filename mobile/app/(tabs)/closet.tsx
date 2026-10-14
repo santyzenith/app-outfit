@@ -1,13 +1,5 @@
 import { router } from 'expo-router';
-import {
-  ArrowUpDownIcon,
-  CameraIcon,
-  ImagesIcon,
-  ListChecksIcon,
-  PlusIcon,
-  SearchIcon,
-  SlidersHorizontalIcon,
-} from 'lucide-react-native';
+import { PlusIcon, SearchIcon, SlidersHorizontalIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -20,30 +12,21 @@ import { SavedOutfits } from '@/components/app/saved-outfits';
 import { Segmented } from '@/components/app/segmented';
 import { UploadBanner } from '@/components/app/upload-banner';
 import { Button } from '@/components/app/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/app/input';
 import { Text } from '@/components/ui/text';
 import {
   activeFilterCount,
   type ClosetColumns,
+  type ClosetSort,
   matchesFilters,
   matchesSearch,
   useClosetColumns,
+  SORT_OPTIONS,
   useClosetFilters,
 } from '@/lib/closet-filters';
 import { type Garment, type GarmentCategory, useGarments } from '@/lib/garments';
 import { useSavedOutfits } from '@/lib/outfits';
-import { pickFromGallery } from '@/lib/upload-queue';
 
 // Tile widths that leave room for the gaps between columns.
 const TILE_WIDTH: Record<ClosetColumns, `${number}%`> = { 3: '32%', 4: '23.5%' };
@@ -67,30 +50,16 @@ const VIEWS: { value: ClosetView; label: string }[] = [
   { value: 'outfits', label: 'Outfits' },
 ];
 
-type Sort = 'recent' | 'most_worn' | 'least_worn';
-
-const SORTS: { value: Sort; label: string }[] = [
-  { value: 'recent', label: 'Recientes' },
-  { value: 'most_worn', label: 'Más usadas' },
-  { value: 'least_worn', label: 'Menos usadas' },
-];
-
 function lastWorn(garment: Garment): number {
   return garment.last_worn_at ? Date.parse(garment.last_worn_at) : 0;
 }
 
-const COMPARE: Record<Sort, (a: Garment, b: Garment) => number> = {
+const COMPARE: Record<ClosetSort, (a: Garment, b: Garment) => number> = {
   recent: (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
   most_worn: (a, b) => b.wear_count - a.wear_count || lastWorn(b) - lastWorn(a),
   // Forgotten clothes first: never worn, then the longest since last worn.
   least_worn: (a, b) => a.wear_count - b.wear_count || lastWorn(a) - lastWorn(b),
 };
-
-const ADD_OPTIONS = [
-  { label: 'Tomar fotos', icon: CameraIcon, run: () => router.push('/add') },
-  { label: 'Elegir de la galería', icon: ImagesIcon, run: () => void pickFromGallery() },
-  { label: 'Elegir básicos', icon: ListChecksIcon, run: () => router.push('/basics') },
-];
 
 function savedSummary(count: number): string {
   if (count === 0) return 'Tus combinaciones favoritas';
@@ -105,13 +74,12 @@ function closetSummary(count: number): string {
 export default function ClosetScreen() {
   const { data: garments = [], isLoading, isError, refetch, isRefetching } = useGarments();
   const [filter, setFilter] = React.useState<Filter>('all');
-  const [sort, setSort] = React.useState<Sort>('recent');
   const [search, setSearch] = React.useState('');
   const [view, setView] = React.useState<ClosetView>('garments');
   const { data: saved = [] } = useSavedOutfits();
   const filters = useClosetFilters();
   const filterCount = activeFilterCount(filters);
-  const columns = useClosetColumns((state) => state.columns);
+  const { columns, sort } = useClosetColumns();
 
   // Garments still being catalogued have no category yet, so they only show under "Todo".
   const visible = garments
@@ -149,48 +117,11 @@ export default function ClosetScreen() {
                   <Icon as={SearchIcon} size={18} className="text-muted-foreground" />
                 </View>
               </View>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Icon as={ArrowUpDownIcon} size={16} />
-                    <Text className="font-sans-medium">
-                      {SORTS.find((option) => option.value === sort)?.label}
-                    </Text>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuRadioGroup
-                    value={sort}
-                    onValueChange={(next) => setSort(next as Sort)}>
-                    {SORTS.map((option) => (
-                      <DropdownMenuRadioItem key={option.value} value={option.value}>
-                        <Text className="font-sans">{option.label}</Text>
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>
-                    <Text className="font-sans-medium text-xs text-muted-foreground">Vista</Text>
-                  </DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={String(columns)}
-                    onValueChange={(next) =>
-                      useClosetColumns.setState({ columns: Number(next) as ClosetColumns })
-                    }>
-                    <DropdownMenuRadioItem value="3">
-                      <Text className="font-sans">3 columnas</Text>
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="4">
-                      <Text className="font-sans">4 columnas</Text>
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
               <View>
+                {/* One control for order and filters, labelled with the current order. */}
                 <Button
                   variant="outline"
-                  size="icon"
-                  accessibilityLabel="Filtros"
+                  accessibilityLabel="Ordenar y filtrar"
                   onPress={() =>
                     router.push({
                       pathname: '/closet-filters',
@@ -198,6 +129,9 @@ export default function ClosetScreen() {
                     })
                   }>
                   <Icon as={SlidersHorizontalIcon} size={18} />
+                  <Text className="font-sans-medium">
+                    {SORT_OPTIONS.find((option) => option.value === sort)?.label}
+                  </Text>
                 </Button>
                 {filterCount > 0 && (
                   <View
@@ -292,25 +226,13 @@ export default function ClosetScreen() {
           <Text className="font-sans-semibold">Crear outfit</Text>
         </Button>
       ) : (
-        <View className="absolute bottom-6 right-4">
-          {/* Three ways in, so nobody has to find the gallery or the basics inside the camera. */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="lg" className="shadow-md">
-                <Icon as={PlusIcon} size={20} className="text-primary-foreground" />
-                <Text className="font-sans-semibold">Añadir prendas</Text>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="end" className="mb-2 w-60">
-              {ADD_OPTIONS.map((option) => (
-                <DropdownMenuItem key={option.label} className="h-12 gap-3" onPress={option.run}>
-                  <Icon as={option.icon} size={20} />
-                  <Text className="font-sans-medium">{option.label}</Text>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </View>
+        <Button
+          size="lg"
+          className="absolute bottom-6 right-4 shadow-md"
+          onPress={() => router.push('/add-options')}>
+          <Icon as={PlusIcon} size={20} className="text-primary-foreground" />
+          <Text className="font-sans-semibold">Añadir prendas</Text>
+        </Button>
       )}
     </View>
   );
