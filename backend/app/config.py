@@ -23,9 +23,10 @@ class Settings(BaseSettings):
     image_model: str = "bytedance-seed/seedream-5-0-flash"
     outfit_model: str = "google/gemini-3.1-flash-lite"
 
-    # Abuse limits: guest accounts per IP address, and garments per user (each one is paid).
+    # Abuse limits: guest accounts per IP address, garments and looks per user (all paid).
     guest_accounts_per_hour: int = 20
     garments_per_day: int = 200
+    inspirations_per_day: int = 30
 
     def client_ids(self, provider: str) -> list[str]:
         raw = {"google": self.google_client_ids, "apple": self.apple_client_ids}[provider]

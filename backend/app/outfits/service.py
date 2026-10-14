@@ -172,6 +172,63 @@ def build_around(
     return outfits[0]
 
 
+def _complete_with_closet(
+    garment_ids: dict[GarmentCategory, uuid.UUID | None], candidates: Candidates
+) -> dict[GarmentCategory, uuid.UUID | None]:
+    # Fills only what a wearable outfit cannot do without: a base and shoes.
+    ids = dict(garment_ids)
+
+    def first(category: GarmentCategory) -> uuid.UUID | None:
+        garments = candidates.by_category[category]
+        return garments[0].id if garments else None
+
+    if not ids[GarmentCategory.ONE_PIECE]:
+        ids[GarmentCategory.TOP] = ids[GarmentCategory.TOP] or first(GarmentCategory.TOP)
+        ids[GarmentCategory.BOTTOM] = ids[GarmentCategory.BOTTOM] or first(GarmentCategory.BOTTOM)
+        if not (ids[GarmentCategory.TOP] and ids[GarmentCategory.BOTTOM]):
+            ids[GarmentCategory.TOP] = ids[GarmentCategory.BOTTOM] = None
+            ids[GarmentCategory.ONE_PIECE] = first(GarmentCategory.ONE_PIECE)
+    ids[GarmentCategory.SHOES] = ids[GarmentCategory.SHOES] or first(GarmentCategory.SHOES)
+    return ids
+
+
+def use_look(
+    db: Session,
+    user: User,
+    garment_ids: dict[GarmentCategory, uuid.UUID | None],
+    explanation: str,
+    day: dt.date,
+    occasion: Occasion,
+    forecast: Forecast | None,
+) -> Outfit:
+    garments = list(
+        db.scalars(
+            select(Garment).where(Garment.user_id == user.id, Garment.status == GarmentStatus.READY)
+        )
+    )
+    candidates = select_candidates(garments, occasion, forecast, day)
+    ids = _complete_with_closet(garment_ids, candidates)
+    if not _is_wearable(OutfitChoice(ids, explanation)):
+        raise NotEnoughGarmentsError(candidates.missing)
+
+    existing = _for_day(db, user, day, occasion)
+    now = dt.datetime.now(dt.UTC)
+    for outfit in existing:
+        if outfit.dismissed_at is None:
+            outfit.dismissed_at = now
+    outfit = Outfit(
+        user_id=user.id,
+        day=day,
+        occasion=occasion,
+        position=len(existing),
+        explanation=explanation or FALLBACK_EXPLANATION,
+        **{f"{category.value}_id": gid for category, gid in ids.items()},
+    )
+    db.add(outfit)
+    db.commit()
+    return outfit
+
+
 def list_worn(db: Session, user: User, limit: int) -> list[Outfit]:
     return list(
         db.scalars(

@@ -74,7 +74,7 @@ def _describe_weather(forecast: Forecast | None) -> str:
     return f"between {forecast.min_c:.0f} and {forecast.max_c:.0f} degrees Celsius{rain}"
 
 
-def _describe_garment(ref: str, garment: Garment) -> dict[str, str | None]:
+def describe_garment(ref: str, garment: Garment) -> dict[str, str | None]:
     return {
         "ref": ref,
         "category": garment.category.value,
@@ -110,7 +110,7 @@ def sugerir_outfits(
         occasion=OCCASION_DESCRIPTIONS[occasion],
         weather=_describe_weather(forecast),
         garments=json.dumps(
-            [_describe_garment(ref, garment) for ref, garment in by_ref.items()],
+            [describe_garment(ref, garment) for ref, garment in by_ref.items()],
             ensure_ascii=False,
         ),
         outerwear_rule=_outerwear_rule(candidates),

@@ -39,7 +39,7 @@ function removePhoto(id: string): void {
   useUploadQueue.setState(({ photos }) => ({ photos: photos.filter((photo) => photo.id !== id) }));
 }
 
-async function compress(uri: string): Promise<string> {
+export async function compressPhoto(uri: string): Promise<string> {
   const image = await ImageManipulator.manipulate(uri)
     .resize({ width: MAX_PHOTO_WIDTH })
     .renderAsync();
@@ -80,7 +80,7 @@ function resumeUploads(): void {
 }
 
 export async function enqueuePhoto(uri: string): Promise<void> {
-  const compressedUri = await compress(uri);
+  const compressedUri = await compressPhoto(uri);
   const photo: QueuedPhoto = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     uri: compressedUri,

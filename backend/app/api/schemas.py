@@ -4,7 +4,14 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models import Formality, GarmentCategory, GarmentStatus, Occasion, Warmth
+from app.models import (
+    Formality,
+    GarmentCategory,
+    GarmentStatus,
+    InspirationStatus,
+    Occasion,
+    Warmth,
+)
 
 
 class UserOut(BaseModel):
@@ -73,3 +80,19 @@ class OutfitOut(BaseModel):
     # Categories the closet could only fill with something off the occasion.
     off_occasion: list[str]
     forecast: ForecastOut | None
+
+
+class MissingPieceOut(BaseModel):
+    category: GarmentCategory
+    name: str
+
+
+class InspirationOut(BaseModel):
+    id: uuid.UUID
+    status: InspirationStatus
+    failure_reason: str | None
+    # The closet's stand-in for each piece of the look; empty slots are null.
+    garments: dict[str, GarmentOut | None]
+    missing: list[MissingPieceOut]
+    explanation: str | None
+    created_at: datetime

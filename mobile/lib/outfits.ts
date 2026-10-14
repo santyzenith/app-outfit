@@ -41,7 +41,7 @@ export const useOccasion = create<{ occasion: Occasion; setOccasion: (next: Occa
   (set) => ({ occasion: defaultOccasion(), setOccasion: (occasion) => set({ occasion }) })
 );
 
-function localDay(now = new Date()): string {
+export function localDay(now = new Date()): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const date = String(now.getDate()).padStart(2, '0');
   return `${now.getFullYear()}-${month}-${date}`;
@@ -52,7 +52,7 @@ function utcOffsetMinutes(): number {
   return -new Date().getTimezoneOffset();
 }
 
-function coordsQuery(coords: Coords | null | undefined): string {
+export function coordsQuery(coords: Coords | null | undefined): string {
   return coords ? `&lat=${coords.lat}&lon=${coords.lon}` : '';
 }
 
@@ -62,7 +62,7 @@ export function useOutfitHistory() {
   return useQuery({ queryKey: HISTORY_KEY, queryFn: () => api<Outfit[]>('/outfits/history') });
 }
 
-function todayKey(occasion: Occasion) {
+export function todayKey(occasion: Occasion) {
   return ['outfit', localDay(), occasion];
 }
 

@@ -128,7 +128,7 @@ export default function TodayScreen() {
         {outfit ? (
           <>
             <OutfitTransition outfitId={outfit.id} dimmed={another.isPending}>
-              <OutfitCollage outfit={outfit} />
+              <OutfitCollage garments={outfit.garments} />
 
               <Text className="text-center font-serif-italic text-lg leading-6">
                 {outfit.explanation}

@@ -3,6 +3,7 @@ import signal
 import time
 
 import app.garments.processing  # noqa: F401  (registers its job handler)
+import app.inspirations.processing  # noqa: F401
 from app.db import SessionLocal
 from app.jobs import requeue_stale_jobs, run_next_job
 from app.outfits.pregeneration import enqueue_due

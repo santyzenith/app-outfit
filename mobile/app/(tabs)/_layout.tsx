@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { HistoryIcon, ShirtIcon, SparklesIcon } from 'lucide-react-native';
+import { HistoryIcon, ShirtIcon, SparklesIcon, WandSparklesIcon } from 'lucide-react-native';
 
 import { Icon } from '@/components/ui/icon';
 
@@ -18,6 +18,13 @@ export default function TabsLayout() {
         options={{
           title: 'Armario',
           tabBarIcon: ({ color, size }) => <Icon as={ShirtIcon} color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="inspire"
+        options={{
+          title: 'Inspira',
+          tabBarIcon: ({ color, size }) => <Icon as={WandSparklesIcon} color={color} size={size} />,
         }}
       />
       <Tabs.Screen

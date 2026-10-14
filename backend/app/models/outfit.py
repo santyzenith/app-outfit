@@ -16,7 +16,7 @@ class Occasion(enum.StrEnum):
     FORMAL = "formal"
 
 
-def _garment_slot() -> Mapped[uuid.UUID | None]:
+def garment_slot() -> Mapped[uuid.UUID | None]:
     # A deleted garment empties its slot instead of deleting the whole outfit.
     return mapped_column(ForeignKey("garments.id", ondelete="SET NULL"))
 
@@ -32,12 +32,12 @@ class Outfit(Base):
     occasion: Mapped[Occasion] = mapped_column(text_enum(Occasion))
     position: Mapped[int]
 
-    top_id: Mapped[uuid.UUID | None] = _garment_slot()
-    bottom_id: Mapped[uuid.UUID | None] = _garment_slot()
-    one_piece_id: Mapped[uuid.UUID | None] = _garment_slot()
-    outerwear_id: Mapped[uuid.UUID | None] = _garment_slot()
-    shoes_id: Mapped[uuid.UUID | None] = _garment_slot()
-    accessory_id: Mapped[uuid.UUID | None] = _garment_slot()
+    top_id: Mapped[uuid.UUID | None] = garment_slot()
+    bottom_id: Mapped[uuid.UUID | None] = garment_slot()
+    one_piece_id: Mapped[uuid.UUID | None] = garment_slot()
+    outerwear_id: Mapped[uuid.UUID | None] = garment_slot()
+    shoes_id: Mapped[uuid.UUID | None] = garment_slot()
+    accessory_id: Mapped[uuid.UUID | None] = garment_slot()
 
     explanation: Mapped[str] = mapped_column(Text)
     dismissed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))

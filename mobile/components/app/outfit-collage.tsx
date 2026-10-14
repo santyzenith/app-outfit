@@ -35,8 +35,8 @@ function slots(...entries: [Garment | null, number][]): Slot[] {
 
 // Two columns like a flat lay: what goes on top at the left, the long piece and shoes at the right.
 // The canvas stays white in dark mode too: garment images come on a white background.
-export function OutfitCollage({ outfit }: { outfit: Outfit }) {
-  const { top, bottom, one_piece, outerwear, shoes, accessory } = outfit.garments;
+export function OutfitCollage({ garments }: { garments: Outfit['garments'] }) {
+  const { top, bottom, one_piece, outerwear, shoes, accessory } = garments;
 
   const columns = one_piece
     ? [slots([one_piece, 1]), slots([outerwear, 3], [shoes, 2], [accessory, 2])]

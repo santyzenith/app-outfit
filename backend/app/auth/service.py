@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.providers import SocialProfile
 from app.auth.tokens import create_access_token, hash_refresh_token, new_refresh_token
 from app.config import get_settings
-from app.models import AuthIdentity, Garment, Outfit, RefreshToken, User
+from app.models import AuthIdentity, Garment, Inspiration, Outfit, RefreshToken, User
 from app.storage import get_storage
 
 # A just-rotated token may be retried once the response got lost on a bad connection.
@@ -41,6 +41,9 @@ def _merge_guest(db: Session, guest: User, account: User) -> None:
         garment.original_path = storage.move(garment.original_path, account.id)
         if garment.image_path:
             garment.image_path = storage.move(garment.image_path, account.id)
+    for inspiration in db.scalars(select(Inspiration).where(Inspiration.user_id == guest.id)):
+        inspiration.user_id = account.id
+        inspiration.photo_path = storage.move(inspiration.photo_path, account.id)
     db.execute(
         update(Outfit)
         .where(Outfit.user_id == guest.id, Outfit.worn_at.is_not(None))
