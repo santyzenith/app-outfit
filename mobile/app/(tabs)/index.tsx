@@ -1,10 +1,10 @@
-import { Link } from 'expo-router';
 import { CheckIcon, RefreshCwIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { ChoiceChips } from '@/components/app/choice-chips';
+import { FirstOutfitChecklist } from '@/components/app/first-outfit-checklist';
 import { OutfitCollage } from '@/components/app/outfit-collage';
 import { OutfitTransition } from '@/components/app/outfit-transition';
 import { Pulse } from '@/components/app/pulse';
@@ -27,12 +27,6 @@ import {
   useTodayOutfit,
   useWearOutfit,
 } from '@/lib/outfits';
-
-const MISSING_TEXT: Partial<Record<GarmentCategory, string>> = {
-  top: 'una parte de arriba',
-  bottom: 'una parte de abajo',
-  shoes: 'un par de zapatos',
-};
 
 const SLOT_TEXT: Record<GarmentCategory, string> = {
   top: 'parte de arriba',
@@ -66,22 +60,6 @@ function Message({
   );
 }
 
-function NotEnoughGarments({ error }: { error: ApiError }) {
-  const missing = (error.detail.missing as GarmentCategory[] | undefined) ?? [];
-  const needs = missing.map((category) => MISSING_TEXT[category]).filter(Boolean);
-  return (
-    <Message
-      title="Aún faltan prendas"
-      body={`Para armar tu primer outfit necesitas ${needs.join(', ')}.`}>
-      <Link href="/add" asChild>
-        <Button size="lg">
-          <Text className="font-sans-semibold">Añadir prendas</Text>
-        </Button>
-      </Link>
-    </Message>
-  );
-}
-
 export default function TodayScreen() {
   const coords = useCoords();
   const { occasion, setOccasion } = useOccasion();
@@ -98,6 +76,8 @@ export default function TodayScreen() {
   const noMoreOutfits =
     another.error instanceof ApiError && another.error.code === 'no_more_outfits';
   const switching = today.isPlaceholderData;
+  const needsGarments =
+    today.error instanceof ApiError && today.error.code === 'not_enough_garments';
   const busy = another.isPending || wear.isPending || switching;
 
   function changeOccasion(next: typeof occasion): void {
@@ -109,7 +89,10 @@ export default function TodayScreen() {
     <View className="flex-1 bg-background">
       <TodayHeader forecast={outfit?.forecast ?? null} />
       <View className="flex-1 gap-4 px-4 pb-4">
-        <ChoiceChips options={OCCASIONS} selected={occasion} onSelect={changeOccasion} />
+        {/* Occasions mean nothing until the closet can make an outfit. */}
+        {!needsGarments && (
+          <ChoiceChips options={OCCASIONS} selected={occasion} onSelect={changeOccasion} />
+        )}
 
         {outfit ? (
           <>
@@ -168,8 +151,8 @@ export default function TodayScreen() {
               </View>
             )}
           </>
-        ) : today.error instanceof ApiError && today.error.code === 'not_enough_garments' ? (
-          <NotEnoughGarments error={today.error} />
+        ) : needsGarments ? (
+          <FirstOutfitChecklist />
         ) : today.isError ? (
           <Message
             title="No pudimos armar tu outfit"
