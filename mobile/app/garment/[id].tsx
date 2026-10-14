@@ -31,6 +31,16 @@ function Field({ label, children }: React.PropsWithChildren<{ label: string }>) 
   );
 }
 
+function wearSummary(garment: Garment): string {
+  if (!garment.last_worn_at) return 'Aún no te la has puesto';
+  const times = garment.wear_count === 1 ? '1 vez' : `${garment.wear_count} veces`;
+  const last = new Date(garment.last_worn_at).toLocaleDateString('es', {
+    day: 'numeric',
+    month: 'long',
+  });
+  return `Usada ${times} · la última, el ${last}`;
+}
+
 // Mounted only once the garment is loaded, so the form can start from its values.
 function GarmentForm({ garment }: { garment: Garment }) {
   const [showOriginal, setShowOriginal] = React.useState(false);
@@ -75,6 +85,7 @@ function GarmentForm({ garment }: { garment: Garment }) {
       <View className="aspect-square overflow-hidden rounded-2xl bg-white">
         <Image source={image} contentFit="contain" style={{ flex: 1 }} transition={150} />
       </View>
+      <Text className="text-center text-sm text-muted-foreground">{wearSummary(garment)}</Text>
       <Button variant="ghost" size="sm" onPress={() => setShowOriginal((value) => !value)}>
         <Text className="font-sans-semibold">
           {showOriginal ? 'Ver imagen del armario' : 'Ver mi foto original'}

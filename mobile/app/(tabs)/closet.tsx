@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { PlusIcon } from 'lucide-react-native';
+import { ArrowUpDownIcon, PlusIcon, SearchIcon } from 'lucide-react-native';
 import * as React from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 
@@ -9,9 +9,17 @@ import { ScreenHeader } from '@/components/app/screen-header';
 import { Pulse } from '@/components/app/pulse';
 import { UploadBanner } from '@/components/app/upload-banner';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Icon } from '@/components/ui/icon';
+import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
-import { type GarmentCategory, useGarments } from '@/lib/garments';
+import { type Garment, type GarmentCategory, useGarments } from '@/lib/garments';
 
 const COLUMNS = 3;
 
@@ -27,6 +35,35 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'accessory', label: 'Accesorios' },
 ];
 
+type Sort = 'recent' | 'most_worn' | 'least_worn';
+
+const SORTS: { value: Sort; label: string }[] = [
+  { value: 'recent', label: 'Recientes' },
+  { value: 'most_worn', label: 'Más usadas' },
+  { value: 'least_worn', label: 'Menos usadas' },
+];
+
+function lastWorn(garment: Garment): number {
+  return garment.last_worn_at ? Date.parse(garment.last_worn_at) : 0;
+}
+
+const COMPARE: Record<Sort, (a: Garment, b: Garment) => number> = {
+  recent: (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+  most_worn: (a, b) => b.wear_count - a.wear_count || lastWorn(b) - lastWorn(a),
+  // Forgotten clothes first: never worn, then the longest since last worn.
+  least_worn: (a, b) => a.wear_count - b.wear_count || lastWorn(a) - lastWorn(b),
+};
+
+// Accents are ignored so "sueter" finds "suéter".
+function normalize(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function matchesSearch(garment: Garment, search: string): boolean {
+  if (!search) return true;
+  return normalize(`${garment.name ?? ''} ${garment.color ?? ''}`).includes(normalize(search));
+}
+
 function closetSummary(count: number): string {
   if (count === 0) return 'Aquí vivirá tu ropa';
   return count === 1 ? '1 prenda' : `${count} prendas`;
@@ -35,14 +72,55 @@ function closetSummary(count: number): string {
 export default function ClosetScreen() {
   const { data: garments = [], isLoading, isError, refetch, isRefetching } = useGarments();
   const [filter, setFilter] = React.useState<Filter>('all');
+  const [sort, setSort] = React.useState<Sort>('recent');
+  const [search, setSearch] = React.useState('');
 
   // Garments still being catalogued have no category yet, so they only show under "Todo".
-  const visible = filter === 'all' ? garments : garments.filter((g) => g.category === filter);
+  const visible = garments
+    .filter((g) => filter === 'all' || g.category === filter)
+    .filter((g) => matchesSearch(g, search.trim()))
+    .sort(COMPARE[sort]);
 
   return (
     <View className="flex-1 bg-background">
       <ScreenHeader title="Armario" eyebrow={closetSummary(garments.length)} />
       <UploadBanner />
+
+      {garments.length > 0 && (
+        <View className="flex-row items-center gap-2 px-4 pb-3">
+          <View className="flex-1 justify-center">
+            <Input
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Buscar prenda"
+              returnKeyType="search"
+              className="h-11 rounded-full pl-10 font-sans"
+            />
+            <View pointerEvents="none" className="absolute left-3.5">
+              <Icon as={SearchIcon} size={18} className="text-muted-foreground" />
+            </View>
+          </View>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-11 rounded-full">
+                <Icon as={ArrowUpDownIcon} size={16} />
+                <Text className="font-sans-medium">
+                  {SORTS.find((option) => option.value === sort)?.label}
+                </Text>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuRadioGroup value={sort} onValueChange={(next) => setSort(next as Sort)}>
+                {SORTS.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    <Text className="font-sans">{option.label}</Text>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </View>
+      )}
 
       {garments.length > 0 && (
         // A horizontal ScrollView grows to fill the screen unless told not to.
@@ -81,14 +159,14 @@ export default function ClosetScreen() {
                 {isError
                   ? 'No pudimos cargar tu armario'
                   : garments.length > 0
-                    ? 'Nada de este tipo todavía'
+                    ? 'No encontramos prendas así'
                     : 'Tu armario está vacío'}
               </Text>
               <Text className="text-center text-muted-foreground">
                 {isError
                   ? 'Desliza hacia abajo para intentarlo de nuevo.'
                   : garments.length > 0
-                    ? 'Añade prendas con el botón de abajo.'
+                    ? 'Prueba con otra búsqueda o tipo de prenda.'
                     : 'Fotografía tu ropa y la ordenamos por ti. Con una parte de arriba, una de abajo y unos zapatos ya tienes tu primer outfit.'}
               </Text>
             </View>

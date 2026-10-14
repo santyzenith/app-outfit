@@ -50,6 +50,8 @@ class GarmentOut(BaseModel):
     warmth: Warmth | None
     formality: Formality | None
     image_version: str | None
+    wear_count: int
+    last_worn_at: datetime | None
     created_at: datetime
 
 

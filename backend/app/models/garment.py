@@ -72,6 +72,7 @@ class Garment(Base):
     focus: Mapped[str | None] = mapped_column(String(200))
 
     last_worn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    wear_count: Mapped[int] = mapped_column(default=0, server_default="0")
 
     @property
     def image_version(self) -> str | None:

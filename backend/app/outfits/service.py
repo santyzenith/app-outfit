@@ -269,5 +269,6 @@ def wear(db: Session, outfit: Outfit) -> Outfit:
             garment = db.get(Garment, garment_id)
             if garment is not None:
                 garment.last_worn_at = now
+                garment.wear_count += 1
         db.commit()
     return outfit

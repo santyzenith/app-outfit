@@ -293,6 +293,8 @@ def test_wearing_an_outfit_rests_its_top_the_next_day(client, db, user, closet, 
     worn = client.post(f"/v1/outfits/{outfit['id']}/wear", headers=user)
 
     assert worn.json()["worn"] is True
+    assert worn.json()["garments"]["top"]["wear_count"] == 1
+    assert worn.json()["garments"]["top"]["last_worn_at"] is not None
     assert today(client, user).json()["id"] == outfit["id"]
     worn_top = db.get(Garment, uuid.UUID(outfit["garments"]["top"]["id"]))
     worn_top.last_worn_at = dt.datetime.combine(TODAY, dt.time(8), dt.UTC)

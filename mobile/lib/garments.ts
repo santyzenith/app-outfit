@@ -19,6 +19,8 @@ export type Garment = {
   warmth: 'light' | 'medium' | 'warm' | null;
   formality: 'casual' | 'smart' | 'formal' | null;
   image_version: string | null;
+  wear_count: number;
+  last_worn_at: string | null;
   created_at: string;
 };
 
